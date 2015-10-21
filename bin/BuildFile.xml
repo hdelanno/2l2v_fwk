@@ -25,6 +25,9 @@
 
   <bin name="runPhoJetAnalysis"           file="hzz2l2v/runPhoJetAnalysis.cc"></bin>
   <bin name="runHZZ2l2vAnalysis"          file="hzz2l2v/runHZZ2l2vAnalysis.cc"></bin>
+  <bin name="runCompaCinematiqueAnalysis" file="CompaCinematique/runCompaCinematiqueAnalysis.cc"></bin>
+  <bin name="runDYStudyAnalysis"          file="DYStudy/runDYStudyAnalysis.cc"></bin>
+  <bin name="runMVAStudy_v2"              file="MVAStudy_v2/runMVAStudy_v2.cc"></bin>
 </environment>
 
 <flags CXXFLAGS="-g -Wno-sign-compare -Wno-unused-variable -Wno-unused-but-set-variable  -Os"/>

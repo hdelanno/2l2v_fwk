@@ -1,0 +1,23 @@
+/grid_mnt/storage__localgrid/delannoy
+
+Total entries to process: 10000 
+Progressing Bar     :0%       20%       40%       60%       80%       100%
+Scanning the ntuple :.................................................. done.
+Results saved in /grid_mnt/storage__localgrid/delannoy/HZZ2L2NU/PUJetID/CompaCinematique/CMSSW_7_4_4/src/UserCode/llvv_fwk/test/CompaCinematique/results/MC8TeV_VBFtoH600toZZto2L2Nu_powheg15_0.root
+SmartSelectionMonitor: histo = 'profilePt_pt_gen_vs_reco_above30_percent' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'photonpt' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jetReso_eta2p75_3' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'profileEta_pt_gen_vs_reco_above30_percent' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jetReso_eta0_2p5' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jetReso_eta3_inf' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jetpt_noNU' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jetcef' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jetchf' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jetpudsct' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jetrawen' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jetReso_eta2p5_2p75' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jetnconst' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jetnch' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jetnef' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jeteta_noNU' is empty for all categories, you may want to cleanup your project to remove this histogram
+SmartSelectionMonitor: histo = 'jetnhf' is empty for all categories, you may want to cleanup your project to remove this histogram

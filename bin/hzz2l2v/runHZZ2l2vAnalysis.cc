@@ -513,6 +513,31 @@ int main(int argc, char* argv[])
   mon.addHistogram( new TH1F( "numbermumuTrigger",  "Number of event passing the mumu Trigger", 2, 0, 2) );
   mon.addHistogram( new TH1F( "numberemuTrigger",  "Number of event passing the emu Trigger", 2, 0, 2) );
 
+  //Counter
+  TH1F *h_jetCat=(TH1F*) mon.addHistogram( new TH1F ("jetcat", ";;Events", 3,0,3) );
+  h_jetCat->GetXaxis()->SetBinLabel(1,"= 0 jet");
+  h_jetCat->GetXaxis()->SetBinLabel(2,"#geq 1 jet");
+  h_jetCat->GetXaxis()->SetBinLabel(3,"VBF");
+
+	//#jets flow
+  TH1F *h_njet=(TH1F*) mon.addHistogram( new TH1F ("njet_average", ";;N_{jet}^{average}", 8,0,8) );
+  h_njet->GetXaxis()->SetBinLabel(1,"miniAOD collection");
+  h_njet->GetXaxis()->SetBinLabel(2,"p_{T}>15 && |#eta|<4.7");
+  h_njet->GetXaxis()->SetBinLabel(3,"#Delta R_{lj}>0.4 && #Delta R_{lg}>0.4");
+  h_njet->GetXaxis()->SetBinLabel(4,"PFLoose");
+  h_njet->GetXaxis()->SetBinLabel(5,"PUJetID (selJet-lvl)");
+  h_njet->GetXaxis()->SetBinLabel(6,"p_{T}>20");
+  h_njet->GetXaxis()->SetBinLabel(7,"N_{jet}=2 && p{1}_{T}> 25 && p^{2}_{T}>20");
+  //h_njet->GetXaxis()->SetBinLabel(6,"|M_{ll}-91|<15");
+  //h_njet->GetXaxis()->SetBinLabel(7,"p_{T}^{Z}>55");
+  //h_njet->GetXaxis()->SetBinLabel(8,"=2leptons");
+  //h_njet->GetXaxis()->SetBinLabel(9,"b-tag");
+  //h_njet->GetXaxis()->SetBinLabel(10,"min #Delta #phi_{j, met}");
+
+
+
+
+
   //
   // STATISTICAL ANALYSIS
   //
@@ -599,6 +624,14 @@ int main(int argc, char* argv[])
   //int nDuplicates(0)
   
   printf("Progressing Bar           :0%%       20%%       40%%       60%%       80%%       100%%\n");
+  
+  double totEvent =0.;
+  for(unsigned int f=0;f<urls.size();f++){
+     TFile* file = TFile::Open(urls[f].c_str() );
+     fwlite::Event ev(file);
+		 totEvent = totEvent + ev.size();
+	}
+  
   for(unsigned int f=0;f<urls.size();f++){
      TFile* file = TFile::Open(urls[f].c_str() );
      fwlite::Event ev(file);
@@ -703,6 +736,8 @@ int main(int argc, char* argv[])
           fwlite::Handle< pat::JetCollection > jetsHandle;
           jetsHandle.getByLabel(ev, "slimmedJets");
           if(jetsHandle.isValid()){ jets = *jetsHandle;}
+
+					mon.fillHisto("njet_average", "StudyJetCat", 0, jets.size()*1.0/totEvent); //miniAOD-lvl
 
           pat::PhotonCollection photons;
           fwlite::Handle< pat::PhotonCollection > photonsHandle;
@@ -995,8 +1030,13 @@ int main(int argc, char* argv[])
          pat::JetCollection selJets;
          int njets(0),nbtags(0),nbtagsJP(0);
          float mindphijmet(9999.);
+
+         //Counters for the eventflow of number of jets
+         double pt15_eta4p7 =0, minDRlj_minDRlg=0, hasPassedPFLoose=0, hasPassedPUJetID=0;
+
          for(size_t ijet=0; ijet<jets.size(); ijet++){
              if(jets[ijet].pt()<15 || fabs(jets[ijet].eta())>4.7 ) continue;
+						 pt15_eta4p7++;
 
              //mc truth for this jet
              const reco::GenJet* genJet=jets[ijet].genJet();
@@ -1009,7 +1049,8 @@ int main(int argc, char* argv[])
              for(size_t ipho=0; ipho<selPhotons.size(); ipho++)
                minDRlg = TMath::Min( minDRlg, deltaR(jets[ijet],selPhotons[ipho]) );
              if(minDRlj<0.4 || minDRlg<0.4) continue;
-             
+             minDRlj_minDRlg++;
+
              //jet id
              bool passPFloose = patUtils::passPFJetID("Loose", jets[ijet]);
          float PUDiscriminant = jets[ijet].userFloat("pileupJetId:fullDiscriminant");
@@ -1020,7 +1061,12 @@ int main(int argc, char* argv[])
                  if(passLooseSimplePuId)                mon.fillHisto(jetType,"",fabs(jets[ijet].eta()),2);
                  if(passPFloose && passLooseSimplePuId) mon.fillHisto(jetType,"",fabs(jets[ijet].eta()),3);
              }
-             if(!passPFloose || !passLooseSimplePuId) continue;
+             if(!passPFloose) continue;
+             hasPassedPFLoose++;
+             if(!passLooseSimplePuId) continue;
+             hasPassedPUJetID++;
+             
+             
              selJets.push_back(jets[ijet]);
              if(jets[ijet].pt()>30) {
                njets++;
@@ -1042,6 +1088,11 @@ int main(int argc, char* argv[])
              }
            }
          std::sort(selJets.begin(), selJets.end(), utils::sort_CandidatesByPt);
+				 mon.fillHisto("njet_average", "StudyJetCat", 1, pt15_eta4p7/totEvent); //selJet-lvl
+				 mon.fillHisto("njet_average", "StudyJetCat", 2, minDRlj_minDRlg/totEvent); //selJet-lvl
+				 mon.fillHisto("njet_average", "StudyJetCat", 3, hasPassedPFLoose/totEvent); //selJet-lvl
+				 mon.fillHisto("njet_average", "StudyJetCat", 4, hasPassedPUJetID/totEvent); //selJet-lvl
+				 //mon.fillHisto("njet_average", "StudyJetCat", 5, selJets.size()/totEvent); //selJet-lvl
 
          //select the taus
          pat::TauCollection selTaus;
@@ -1101,6 +1152,24 @@ int main(int argc, char* argv[])
          }
 
          TString evCat=eventCategoryInst.GetCategory(selJets,boson);
+         mon.fillHisto("njets", "cat_selJets_njet", selJets.size(), weight);
+         
+				 pat::JetCollection selJets_30;
+         for (unsigned int i = 0; i < selJets.size() ; i++){
+						if(selJets[i].pt() <20) continue;
+						selJets_30.push_back(selJets[i]);
+				 }
+
+         mon.fillHisto("njets", "cat_selJets_njet_30", selJets_30.size(), weight);
+         mon.fillHisto("njet_average", "StudyJetCat", 5, selJets_30.size()*1.0/totEvent); //selJet-lvl
+         if(selJets_30.size() >1){
+         	 if ( selJets_30[0].pt()>25 && selJets_30[1].pt()>20 ) mon.fillHisto("njet_average", "StudyJetCat", 6, selJets_30.size()*1.0/totEvent); //selJet-lvl
+				 }
+
+         if(evCat=="eq0jets") mon.fillHisto("jetcat", "counter_selJets", 0, weight);
+         if(evCat=="geq1jets") mon.fillHisto("jetcat", "counter_selJets", 1, weight);
+         if(evCat=="vbf") mon.fillHisto("jetcat", "counter_selJets", 2, weight);
+
          std::vector<TString> tags(1,"all");
          for(size_t ich=0; ich<chTags.size(); ich++){
            tags.push_back( chTags[ich] );
@@ -1145,6 +1214,8 @@ int main(int argc, char* argv[])
 
          if(passMass){
 
+					 //mon.fillHisto("njet_average", "StudyJetCat", 5, selJets.size()*1.0/ev.size()); //selJet-lvl
+
            mon.fillHisto("eventflow",tags, 2,weight);
            mon.fillHisto("zpt",      tags, boson.pt(),weight);
 
@@ -1153,6 +1224,9 @@ int main(int argc, char* argv[])
            mon.fillHisto("qtraw",    tags, boson.pt(),weight/triggerPrescale,true); 
 
            if(passQt){
+
+						 //mon.fillHisto("njet_average", "StudyJetCat", 6, selJets.size()*1.0/ev.size()); //selJet-lvl
+
              mon.fillHisto("eventflow",tags,3,weight);
              int nExtraLeptons((selLeptons.size()-2)+extraLeptons.size());
              mon.fillHisto("nextraleptons",tags,nExtraLeptons,weight);
@@ -1165,6 +1239,8 @@ int main(int argc, char* argv[])
                mon.fillHisto("thirdleptonmt",tags,mt,weight);
              }
              if(passThirdLeptonVeto){
+
+             	 //mon.fillHisto("njet_average", "StudyJetCat", 7, selJets.size()*1.0/ev.size()); //selJet-lvl
                
                mon.fillHisto("eventflow",tags,4,weight);
                for(size_t ijet=0; ijet<selJets.size(); ijet++){
@@ -1183,6 +1259,9 @@ int main(int argc, char* argv[])
                mon.fillHisto( "nbtagsJP",tags,nbtagsJP,weight);
                
                if(passBtags){
+
+               	 //mon.fillHisto("njet_average", "StudyJetCat", 8, selJets.size()*1.0/ev.size()); //selJet-lvl
+
                  mon.fillHisto("eventflow",tags,5,weight);
 
                  //include photon prediction from this point forward
@@ -1229,6 +1308,8 @@ int main(int argc, char* argv[])
                    mon.fillHisto( "mindphijmet",icat,mindphijmet,iweight);
                    if(met.pt()>80) mon.fillHisto( "mindphijmetNM1",icat,mindphijmet,iweight);
                    if(passMinDphijmet){
+                     
+                     //mon.fillHisto("njet_average", "StudyJetCat", 9, selJets.size()*1.0/ev.size()); //selJet-lvl
                      mon.fillHisto("eventflow",icat,6,iweight);
                      
                      //this one is used to sample the boson mass: cuts may shape Z lineshape
@@ -1428,7 +1509,11 @@ int main(int argc, char* argv[])
          
            //re-assign the event category to take migrations into account
            TString evCat  = eventCategoryInst.GetCategory(tightVarJets,boson);
-           //TString evCat  = eventCategoryInst.GetCategory(selJets,boson);
+					 //TString evCat  = eventCategoryInst.GetCategory(selJets,boson);
+					 mon.fillHisto("njets", "cat_tightVarJets_njet", tightVarJets.size(), weight);
+					 if(evCat=="eq0jets") mon.fillHisto("jetcat", "counter_tightVarJets", 0, weight);
+					 if(evCat=="geq1jets") mon.fillHisto("jetcat", "counter_tightVarJets", 1, weight);
+					 if(evCat=="vbf") mon.fillHisto("jetcat", "counter_tightVarJets", 2, weight);
            
            for(size_t ich=0; ich<chTags.size(); ich++){
 

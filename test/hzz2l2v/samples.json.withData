@@ -1,0 +1,104 @@
+{
+  "proc":[
+       {
+      "tag":"data",
+      "isdata":true,
+      "color":1,
+      "fill":0,
+      "marker":20,
+      "data":[
+        { "dtag":"Data13TeV_DoubleElectron2015B17jul15"    , "split":50, "xsec":1.0         , "br":[ 1.0 ]                 , "dset":"/DoubleEG/Run2015B-17Jul2015-v1/MINIAOD"   ,  "lumiMask":"/afs/cern.ch/user/q/querten/workspace/public/14_09_05_2l2vfwk_MiniAOD/CMSSW_7_4_2/src/UserCode/llvv_fwk/test/hzz2l2v/Cert_246908-251562_13TeV_PromptReco_Collisions15_JSON_v2.txt"   },
+        { "dtag":"Data13TeV_DoubleMu2015B17jul15"          , "split":50, "xsec":1.0         , "br":[ 1.0 ]                 , "dset":"/DoubleMuon/Run2015B-17Jul2015-v1/MINIAOD" ,  "lumiMask":"/afs/cern.ch/user/q/querten/workspace/public/14_09_05_2l2vfwk_MiniAOD/CMSSW_7_4_2/src/UserCode/llvv_fwk/test/hzz2l2v/Cert_246908-251562_13TeV_PromptReco_Collisions15_JSON_v2.txt"   },
+        { "dtag":"Data13TeV_MuEG2015B17jul15"              , "split":50, "xsec":1.0         , "br":[ 1.0 ]                 , "dset":"/MuonEG/Run2015B-17Jul2015-v1/MINIAOD"     ,  "lumiMask":"/afs/cern.ch/user/q/querten/workspace/public/14_09_05_2l2vfwk_MiniAOD/CMSSW_7_4_2/src/UserCode/llvv_fwk/test/hzz2l2v/Cert_246908-251562_13TeV_PromptReco_Collisions15_JSON_v2.txt"   },
+        { "dtag":"Data13TeV_DoubleElectron2015B"           , "split":50, "xsec":1.0         , "br":[ 1.0 ]                 , "dset":"/DoubleEG/Run2015B-PromptReco-v1/MINIAOD"   ,  "lumiMask":"/afs/cern.ch/user/q/querten/workspace/public/14_09_05_2l2vfwk_MiniAOD/CMSSW_7_4_2/src/UserCode/llvv_fwk/test/hzz2l2v/Cert_251563-251883_13TeV_PromptReco_Collisions15_JSON_v2.txt"   },
+        { "dtag":"Data13TeV_DoubleMu2015B"                 , "split":50, "xsec":1.0         , "br":[ 1.0 ]                 , "dset":"/DoubleMuon/Run2015B-PromptReco-v1/MINIAOD" ,  "lumiMask":"/afs/cern.ch/user/q/querten/workspace/public/14_09_05_2l2vfwk_MiniAOD/CMSSW_7_4_2/src/UserCode/llvv_fwk/test/hzz2l2v/Cert_251563-251883_13TeV_PromptReco_Collisions15_JSON_v2.txt"   },
+        { "dtag":"Data13TeV_MuEG2015B"                     , "split":50, "xsec":1.0         , "br":[ 1.0 ]                 , "dset":"/MuonEG/Run2015B-PromptReco-v1/MINIAOD"     ,  "lumiMask":"/afs/cern.ch/user/q/querten/workspace/public/14_09_05_2l2vfwk_MiniAOD/CMSSW_7_4_2/src/UserCode/llvv_fwk/test/hzz2l2v/Cert_251563-251883_13TeV_PromptReco_Collisions15_JSON_v2.txt"   }
+      ]
+    },
+    {
+      "tag":"ggH(400)#rightarrow ZZ",
+      "isinvisible":false,
+      "isdata":false,
+      "issignal":true,
+      "spimpose":true,
+      "color":619,
+      "lwidth":2,
+      "fill":0,
+      "marker":1,
+      "data":[
+        { "dtag":"MC13TeV_GGtoH400toZZto2L2Nu_powheg15"     , "split":9, "xsec":9.68      , "br":[0.269, 0.0135]    , "dset":"/GluGluHToZZTo2L2Nu_M400_13TeV_powheg_JHUgen_pythia8/RunIISpring15DR74-Asympt25ns_MCRUN2_74_V9-v1/MINIAODSIM", "dbsURL":"prod/global" }
+      ]
+    },
+    {
+      "tag":"qqH(400)#rightarrow ZZ",
+      "isinvisible":false,
+      "isdata":false,
+      "issignal":true,
+      "spimpose":true,
+      "color":619,
+      "lwidth":2,
+      "lstyle":2,
+      "fill":0,
+      "marker":1,
+      "data":[
+        { "dtag":"MC13TeV_VBFtoH400toZZto2L2Nu_powheg15"     , "split":9, "xsec":0.55      , "br":[0.269, 0.0135]    , "dset":"/VBF_HToZZTo2L2Nu_M400_13TeV_powheg_JHUgen_pythia8/RunIISpring15DR74-Asympt25ns_MCRUN2_74_V9-v1/MINIAODSIM", "dbsURL":"prod/global" }
+      ]
+    },
+    {
+      "tag":"ggH(600)#rightarrow ZZ",
+      "isinvisible":false,
+      "isdata":false,
+      "issignal":true,
+      "spimpose":true,
+      "color":809,
+      "lwidth":2,
+      "fill":0,
+      "marker":1,
+      "data":[
+        { "dtag":"MC13TeV_GGtoH600toZZto2L2Nu_powheg15"     , "split":9, "xsec":2.128      , "br":[0.272, 0.0135]    , "dset":"/GluGluHToZZTo2L2Nu_M600_13TeV_powheg_JHUgen_pythia8/RunIISpring15DR74-Asympt25ns_MCRUN2_74_V9-v1/MINIAODSIM", "dbsURL":"prod/global" }
+      ]
+    },
+    {
+      "tag":"qqH(600)#rightarrow ZZ",
+      "isinvisible":false,
+      "isdata":false,
+      "issignal":true,
+      "spimpose":true,
+      "color":809,
+      "lwidth":2,
+      "lstyle":2,
+      "fill":0,
+      "marker":1,
+      "data":[
+        { "dtag":"MC13TeV_VBFtoH600toZZto2L2Nu_powheg15"     , "split":9, "xsec":0.288      , "br":[0.272, 0.0135]    , "dset":"/VBF_HToZZTo2L2Nu_M600_13TeV_powheg_JHUgen_pythia8/RunIISpring15DR74-Asympt25ns_MCRUN2_74_V9-v1/MINIAODSIM", "dbsURL":"prod/global" }
+      ]
+    },
+    {
+      "tag":"ggH(1000)#rightarrow ZZ",
+      "isinvisible":false,
+      "isdata":false,
+      "issignal":true,
+      "spimpose":true,
+      "color":868,
+      "lwidth":2,
+      "fill":0,
+      "marker":1,
+      "data":[
+        { "dtag":"MC13TeV_GGtoH1000toZZto2L2Nu_powheg15"     , "split":9, "xsec":0.189      , "br":[0.311, 0.0135]    , "dset":"/GluGluHToZZTo2L2Nu_M1000_13TeV_powheg_JHUgen_pythia8/RunIISpring15DR74-Asympt25ns_MCRUN2_74_V9-v1/MINIAODSIM", "dbsURL":"prod/global" }
+      ]
+    },
+    {
+      "tag":"qqH(1000)#rightarrow ZZ",
+      "isinvisible":false,
+      "isdata":false,
+      "issignal":true,
+      "spimpose":true,
+      "color":868,
+      "lwidth":2,
+      "lstyle":2,
+      "fill":0,      "marker":1,      "data":[
+        { "dtag":"MC13TeV_VBFtoH1000toZZto2L2Nu_powheg15"     , "split":9, "xsec":0.066      , "br":[0.311, 0.0135]    , "dset":"/VBF_HToZZTo2L2Nu_M1000_13TeV_powheg_JHUgen_pythia8/RunIISpring15DR74-Asympt25ns_MCRUN2_74_V9-v1/MINIAODSIM", "dbsURL":"prod/global" }
+      ]
+    }
+  ]
+}

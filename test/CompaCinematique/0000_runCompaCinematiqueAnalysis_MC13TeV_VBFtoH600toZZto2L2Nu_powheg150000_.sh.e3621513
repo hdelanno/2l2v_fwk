@@ -1,0 +1,1 @@
+Warning in <TClass::Init>: no dictionary for class edm::AtomicPtrCache<vector<edm::Ptr<CaloTower> > > is available

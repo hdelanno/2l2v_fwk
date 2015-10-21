@@ -1,0 +1,3 @@
+1) leading pT>45, subleading pT>35, dEta>3.25, MJJ>600
+2) jet1pT>25, Jet2pT>20 dEta>4 Mjj>700
+3) jet1>45, j2>20 dEta>4.25 Mjj>850

@@ -1,0 +1,34 @@
+Warning in <TROOT::Append>: Replacing existing TH1: jetpt (Potential memory leak).
+Warning in <TClass::Init>: no dictionary for class edm::AtomicPtrCache<vector<edm::Ptr<CaloTower> > > is available
+Info in <TROOT::TEfficiency::CheckEntries>: Histograms are not consistent: passed bin content > total bin content
+Error in <TROOT::TEfficiency::CheckConsistency>: passed TEfficiency objects do not have consistent bin contents
+Error in <TGraphAsymmErrors::Divide>: passed histograms are not consistent
+Info in <TROOT::TEfficiency::CheckEntries>: Histograms are not consistent: passed bin content > total bin content
+Error in <TROOT::TEfficiency::CheckConsistency>: passed TEfficiency objects do not have consistent bin contents
+Error in <TGraphAsymmErrors::Divide>: passed histograms are not consistent
+Error in <TROOT::WriteTObject>: The current directory (root) is not associated with a file. The object (Graph) has not been written.
+Error in <TROOT::WriteTObject>: The current directory (root) is not associated with a file. The object (Graph) has not been written.
+Info in <TROOT::TEfficiency::CheckEntries>: Histograms are not consistent: passed bin content > total bin content
+Error in <TROOT::TEfficiency::CheckConsistency>: passed TEfficiency objects do not have consistent bin contents
+Error in <TGraphAsymmErrors::Divide>: passed histograms are not consistent
+Info in <TROOT::TEfficiency::CheckEntries>: Histograms are not consistent: passed bin content > total bin content
+Error in <TROOT::TEfficiency::CheckConsistency>: passed TEfficiency objects do not have consistent bin contents
+Error in <TGraphAsymmErrors::Divide>: passed histograms are not consistent
+Error in <TROOT::WriteTObject>: The current directory (root) is not associated with a file. The object (Graph) has not been written.
+Error in <TROOT::WriteTObject>: The current directory (root) is not associated with a file. The object (Graph) has not been written.
+Info in <TROOT::TEfficiency::CheckEntries>: Histograms are not consistent: passed bin content > total bin content
+Error in <TROOT::TEfficiency::CheckConsistency>: passed TEfficiency objects do not have consistent bin contents
+Error in <TGraphAsymmErrors::Divide>: passed histograms are not consistent
+Info in <TROOT::TEfficiency::CheckEntries>: Histograms are not consistent: passed bin content > total bin content
+Error in <TROOT::TEfficiency::CheckConsistency>: passed TEfficiency objects do not have consistent bin contents
+Error in <TGraphAsymmErrors::Divide>: passed histograms are not consistent
+Error in <TROOT::WriteTObject>: The current directory (root) is not associated with a file. The object (Graph) has not been written.
+Error in <TROOT::WriteTObject>: The current directory (root) is not associated with a file. The object (Graph) has not been written.
+Info in <TROOT::TEfficiency::CheckEntries>: Histograms are not consistent: passed bin content > total bin content
+Error in <TROOT::TEfficiency::CheckConsistency>: passed TEfficiency objects do not have consistent bin contents
+Error in <TGraphAsymmErrors::Divide>: passed histograms are not consistent
+Info in <TROOT::TEfficiency::CheckEntries>: Histograms are not consistent: passed bin content > total bin content
+Error in <TROOT::TEfficiency::CheckConsistency>: passed TEfficiency objects do not have consistent bin contents
+Error in <TGraphAsymmErrors::Divide>: passed histograms are not consistent
+Error in <TROOT::WriteTObject>: The current directory (root) is not associated with a file. The object (Graph) has not been written.
+Error in <TROOT::WriteTObject>: The current directory (root) is not associated with a file. The object (Graph) has not been written.

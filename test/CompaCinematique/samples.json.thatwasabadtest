@@ -1,0 +1,17 @@
+{
+  "proc":[
+       {
+      "tag":"qqH(600)#rightarrow ZZ (8TeV)",
+      "isinvisible":false,
+      "isdata":false,
+      "issignal":true,
+      "spimpose":true,
+      "color":619,
+      "lwidth":2,
+      "lstyle":2,
+      "fill":0,
+      "marker":1,
+      "data":[       { "dtag":"MC8TeV_VBFtoH600toZZto2L2Nu_powheg15"     , "split":1, "xsec":0.5505595      , "br":[0.269, 0.0269264],  "miniAOD":"/store/user/hdelanno/HZZ2L2NU/PUJetID/AlessioAt8TeV/qqH600_744" }      ]
+    }
+   ]
+}

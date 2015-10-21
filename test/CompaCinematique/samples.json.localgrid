@@ -1,0 +1,30 @@
+{
+  "proc":[
+       {
+      "tag":"qqH(600)#rightarrow ZZ (8TeV)",
+      "isinvisible":false,
+      "isdata":false,
+      "issignal":true,
+      "spimpose":true,
+      "color":619,
+      "lwidth":2,
+      "lstyle":2,
+      "fill":0,
+      "marker":1,
+      "data":[       { "dtag":"MC8TeV_VBFtoH600toZZto2L2Nu_powheg15"     , "split":1, "xsec":0.5505595      , "br":[0.269, 0.0269264]    , "dset":"", "miniAOD":"/localgrid/delannoy" }      ]
+    },
+       {
+      "tag":"qqH(600)#rightarrow ZZ (13TeV)",
+      "isinvisible":false,
+      "isdata":false,
+      "issignal":true,
+      "spimpose":true,
+      "color":592,
+      "lwidth":2,
+      "lstyle":2,
+      "fill":0,
+      "marker":1,
+      "data":[       { "dtag":"MC13TeV_VBFtoH600toZZto2L2Nu_powheg15"     , "split":24, "xsec":0.5505595      , "br":[0.269, 0.0269264]    , "dset":"/VBF_HToZZTo2L2Nu_M600_13TeV_powheg_JHUgen_pythia8/RunIISpring15DR74-Asympt25ns_MCRUN2_74_V9-v1/MINIAODSIM"  }      ]
+    }
+   ]
+}

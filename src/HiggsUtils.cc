@@ -16,7 +16,7 @@ namespace higgs{
       //jet multiplicity
       int NJets(0);
       for(size_t ijet=0; ijet<jets.size(); ijet++){
-	if(jets[ijet].pt()<=30)continue;
+	if(jets[ijet].pt()<=20)continue;
 	NJets++;
       }
       
@@ -40,7 +40,7 @@ namespace higgs{
 	}
 	
 	if(boson.eta()>MinEta && boson.eta()<MaxEta) NCentralBoson=1;
-	isVBF=( (dEta>4.0) && (VBFSyst.M()>500) && (NCentralJet==0) && (NCentralBoson==1) );
+	isVBF=( (jets[0].pt() >25) && (jets[1].pt() >20 ) && (dEta>4.0) && (VBFSyst.M()>700) && (NCentralJet==0) && (NCentralBoson==1) );
       }
       
       //build classification
