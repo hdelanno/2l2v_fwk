@@ -663,7 +663,16 @@ int main(int argc, char* argv[])
   
   printf("Progressing Bar           :0%%       20%%       40%%       60%%       80%%       100%%\n");
   for(unsigned int f=0;f<urls.size();f++){
-     TFile* file = TFile::Open(urls[f].c_str() );
+		
+     TString namePath = "";
+     namePath += f;
+     TString copyCmd = "";
+     copyCmd += TString("dccp ") + urls[f].c_str() + " $TMPDIR/"+namePath+".root ;";
+     printf("Copy the file: %s", copyCmd.Data());
+     system(copyCmd.Data());
+     TFile* file = TFile::Open("$TMPDIR/"+namePath+".root");
+
+		 //TFile* file = TFile::Open(urls[f].c_str() );
      fwlite::Event ev(file);
      printf("Scanning the ntuple %2i/%2i :", (int)f+1, (int)urls.size());
      int iev=0;

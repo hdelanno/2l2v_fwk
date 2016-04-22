@@ -103,7 +103,7 @@ def getFileList(procData,DefaultNFilesPerJob):
          list = [x for x in list if ".root" in x] #make sure that we only consider root files
          for i in range(0,len(list)):              
             if IsOnLocalTier:
-               if  (hostname.find("iihe.ac.be")!=-1): list[i] = "dcap://maite.iihe.ac.be:/pnfs/iihe/cms/ph/sc4"+list[i]
+               if  (hostname.find("iihe.ac.be")!=-1): list[i] = "dcap://maite.iihe.ac.be/pnfs/iihe/cms/ph/sc4"+list[i]
                elif(hostname.find("ucl.ac.be" )!=-1): list[i] = "/storage/data/cms"+list[i]
                else:                                  list[i] = "root://eoscms//eos/cms"+list[i]            
             else:
@@ -121,7 +121,7 @@ def getFileList(procData,DefaultNFilesPerJob):
          NFilesPerJob = max(1,len(list)/split)
       else:
          NFilesPerJob = DefaultNFilesPerJob
-         if((len(list)/NFilesPerJob)>100):NFilesPerJob=len(list)/100;  #make sure the number of jobs isn't too big
+         #if((len(list)/NFilesPerJob)>100):NFilesPerJob=len(list)/100;  #make sure the number of jobs isn't too big
 
       for g in range(0, len(list), NFilesPerJob):
          groupList = ''
