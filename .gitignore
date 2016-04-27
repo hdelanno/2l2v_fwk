@@ -15,3 +15,6 @@ python/__init__.py
 
 # no results directories
 test/chhiggs/results_*
+
+#no cache files
+data/das_query_cache.db
