@@ -14,366 +14,761 @@
 
 using namespace std;
 
-std::string function_used = "([0] + [1]*x + [2]*x^2 + [3]*x^3 + [4]*x^4 )";
+//std::string function_used = "([0] + [1]*x + [2]*pow(x,[3]) + [4]*pow(x,[5]) )";
+//std::string function_used_noLog = "[0] + [1]*TMath::Exp(-(log(x + [2])-[3])^2/[4])/[4]*x";
+//std::string function_used_noLog = "[0] + [1]*TMath::Exp([2]*TMath::Exp(-[3]*x))";
+//std::string function_used_noLog = "pow([0]*pow(x,[1]) + [2]*pow(x,[3]) + [4], 10)";
+//std::string function_used_noLog = "[0]*pow(x,-[1]) + [2]*pow(x,-[3]) + [4]";
+//std::string function_used_noLog = "[0] + [1]*TMath::Exp([2]+[3]*x) + [4]*TMath::Exp([5]+[6]*x)";
+//std::string function_used_noLog = "[0] + [1]*TMath::Exp([2]+[3]*TMath::Exp([4]-[3]*x))";
+//std::string function_used_noLog = "[0]*pow([1] + [2]*TMath::Exp([3]-[4]*x), 10)";
+//std::string function_used_noLog = "[0]*TMath::Exp([1]+[2]*x)+[3]*TMath::Exp([4]+[5]*x)+[6]*TMath::Exp([7]+[8]*x)+[9]*TMath::Exp([10]+[11]*x)+[12]*TMath::Exp([13]+[14]*x)";
+std::string function_used_noLog = "expo(0)+expo(2)+expo(4)+expo(6)";
+std::string function_used = "[0]*pow(x,[1]) + [2]*pow(x,[3]) + [4]";
 
-TF1* FitFunction(TH1D *hf, bool cutOnBinContent){
+TF1* FitFunction(TH1D *hf, double SF=1.0, std::string cat=" ", std::string bin=" "){
 
-        TH1D *loghf = new TH1D("","", 1500, 0, 1500);
-        int  ncells = hf->GetSize();
+  if(SF!=1.0)printf("SF = %f\n", SF);        
 
-        double min = 55;
-        double max = 0;
 
-        for(int bin=0;bin<(ncells-1);bin++){
-           if(hf->GetBinContent(bin)>0){ 
-               loghf->SetBinContent( bin, log10(hf->GetBinContent(bin)));
-               loghf->SetBinError( bin, (hf->GetBinError(bin)/hf->GetBinContent(bin)));	
-               if( hf->GetBinContent(bin)>1 && cutOnBinContent ){ max = hf->GetXaxis()->GetBinCenter(bin); }
-	       else if( hf->GetBinContent(bin)>15 && !cutOnBinContent ){ max = hf->GetXaxis()->GetBinCenter(bin); }
-           }
-        }
-        TF1 *f1 = new TF1( "fit1", function_used.c_str(), min, max);
-        loghf->Fit( f1, "R");
-        TF1 *fit = loghf->GetFunction("fit1");
+  TH1D* loghf = (TH1D*)hf->Clone("TmpForFitting");
+  loghf->Reset();
+  int  ncells = hf->GetSize();
 
-	TF1 *ffit1 = new TF1( "ffit1", function_used.c_str(), min, max);
-        ffit1->SetParameters( fit->GetParameter(0), fit->GetParameter(1), fit->GetParameter(2), fit->GetParameter(3), fit->GetParameter(4));
+  double par[5] = {0.,0.,0.,0.,0.};
+	if( cat == "eq0jets" && bin == "all" ){ par[0]=2.5; par[1]=2.5; par[2]=2.5; par[3]=1.5; par[4]=2.5; }
+	else if( cat == "eq0jets"  && bin == "ee"    ){ par[0]=-2.5; par[1]=-1.5;  par[2]=2.5; par[3]=2.5; par[4]=2.5; }
+	else if( cat == "eq0jets"  && bin == "mumu"  ){  par[0]=2.5;  par[1]=1.5;  par[2]=2.5; par[3]=3.5; par[4]=1.5; }
 
-	return ffit1;   
+	else if( cat == "geq1jets" && bin == "all"   ){ par[0]=-2.5; par[1]=-3.5;  par[2]=2.5; par[3]=1.5; par[4]=4.5; }
+  else if( cat == "geq1jets" && bin == "ee"    ){ par[0]=-1.5; par[1]=-1.5; par[2]=1.5; par[3]=2.5; par[4]=2.5; }
+  else if( cat == "geq1jets" && bin == "mumu"  ){ par[0]=-1.5; par[1]=-1.5;  par[2]=1.5; par[3]=2.5; par[4]=2.5; }
+
+  double min = 55;
+  double max = 0;
+
+  for(int nbin=0;nbin<(ncells-1);nbin++){
+    int nbin_content_limit = 0;
+    if( bin == "ee" ){ nbin_content_limit=4; } else { nbin_content_limit=1; } 
+    if(hf->GetBinContent(nbin)>nbin_content_limit ){ 
+      loghf->SetBinContent( nbin, log10(hf->GetBinContent(nbin)*SF ));
+      loghf->SetBinError( nbin, log10(hf->GetBinError(nbin)*SF ) );	
+
+      if(hf->GetBinContent(nbin)>3*SF){ max = hf->GetXaxis()->GetBinCenter(nbin); }  //only consider bins with >=1 entries
+    }
+  }
+  TF1 *f1 = new TF1( "fit1", function_used.c_str(), min, max);
+  f1->SetParameters( par[0], par[1], par[2], par[3], par[4]);
+  /*if( cat == "eq0jets" && bin == "ee" ){ 
+	  f1->SetParLimits(  0,  1e-08, 5e-01);
+    f1->SetParLimits(  1,     0,     10);
+    f1->SetParLimits(  2,  1e-08, 5e-01);
+    f1->SetParLimits(  3,     0,     10);
+    f1->SetParLimits(  4,     0,     10);
+    }
+    else if( cat == "eq0jets" && bin == "mumu" ){
+    f1->SetParLimits(  0, -2e+04, -2e+02);
+    f1->SetParLimits(  1, -1e-02, -1e-08);
+    f1->SetParLimits(  2, -1e-05, -1e-15);
+    f1->SetParLimits(  3,      0,     10);
+    f1->SetParLimits(  4,  2e+02,  2e+04);
+    }
+    else if( cat == "geq1jets" && bin == "mumu" ){
+    f1->SetParLimits(  0, -5e-04, -1e-01);
+    f1->SetParLimits(  1,  1e-04,      1);
+    f1->SetParLimits(  2,  1e-08,  1e-02);
+    f1->SetParLimits(  3,      0,     10);
+    f1->SetParLimits(  4,      0,     10);
+    }
+    else if( cat == "geq1jets" && bin == "ee" ){
+    f1->SetParLimits(  0, -5e-03,  -1e-01);
+    f1->SetParLimits(  1,  1e-03,       1);
+    f1->SetParLimits(  2,  1e-09,   1e-05);
+    f1->SetParLimits(  3,      0,      10);
+    f1->SetParLimits(  4,      0,      10);
+    }*/
+  loghf->Fit( f1, "R");
+  return f1;   
 }
+
+
+TF1* FitFunction_noLog(TH1D *hf, double SF=1.0, std::string cat=" ", std::string bin=" "){
+	cout << "dans ma nouvelle fonction" << endl;
+  if(SF!=1.0)printf("SF = %f\n", SF);        
+
+  int  ncells = hf->GetSize();
+
+  //double par[5] = {0.,0.,0.,0.,0.};
+  double par[4] = {0.,1.,1.,2.6};
+
+	/*if( cat == "eq0jets" && bin == "all" ){ par[0]=2.5; par[1]=2.5; par[2]=2.5; par[3]=1.5; par[4]=2.5; }
+		else if( cat == "eq0jets"  && bin == "ee"    ){ par[0]=-2.5; par[1]=-1.5;  par[2]=2.5; par[3]=2.5; par[4]=2.5; }
+		else if( cat == "eq0jets"  && bin == "mumu"  ){  par[0]=2.5;  par[1]=1.5;  par[2]=2.5; par[3]=3.5; par[4]=1.5; }
+
+		else if( cat == "geq1jets" && bin == "all"   ){ par[0]=-2.5; par[1]=-3.5;  par[2]=2.5; par[3]=1.5; par[4]=4.5; }
+  	else if( cat == "geq1jets" && bin == "ee"    ){ par[0]=-1.5; par[1]=-1.5; par[2]=1.5; par[3]=2.5; par[4]=2.5; }
+  	else if( cat == "geq1jets" && bin == "mumu"  ){ par[0]=-1.5; par[1]=-1.5;  par[2]=1.5; par[3]=2.5; par[4]=2.5; }
+		*/
+  double min = 55;
+  double max = 0;
+
+  for(int nbin=0;nbin<(ncells-1);nbin++){
+    int nbin_content_limit = 0;
+    if( bin == "ee" ){ nbin_content_limit=4; } else { nbin_content_limit=1; } 
+    if(hf->GetBinContent(nbin)>nbin_content_limit ){ 
+      if(hf->GetBinContent(nbin)>3*SF){ max = hf->GetXaxis()->GetBinCenter(nbin); }  //only consider bins with >=1 entries
+    }
+  }
+
+  cout << " min : " << min << " et max : " << max << endl;
+  max = 500 ;//artificial FIXME HUGO
+  TString tf1_name = string("fit1_")+hf->GetName();
+  TF1 *f1 = new TF1( tf1_name , function_used_noLog.c_str(), min, max);
+  //f1->SetParameters( par[0], par[1], par[2], par[3], par[4]);
+  ////f1->SetParameters( par[0], par[1], par[2], par[3]);
+  /*if( cat == "eq0jets" && bin == "ee" ){ 
+	  f1->SetParLimits(  0,  1e-08, 5e-01);
+    f1->SetParLimits(  1,     0,     10);
+    f1->SetParLimits(  2,  1e-08, 5e-01);
+    f1->SetParLimits(  3,     0,     10);
+    f1->SetParLimits(  4,     0,     10);
+    }
+    else if( cat == "eq0jets" && bin == "mumu" ){
+    f1->SetParLimits(  0, -2e+04, -2e+02);
+    f1->SetParLimits(  1, -1e-02, -1e-08);
+    f1->SetParLimits(  2, -1e-05, -1e-15);
+    f1->SetParLimits(  3,      0,     10);
+    f1->SetParLimits(  4,  2e+02,  2e+04);
+    }
+    else if( cat == "geq1jets" && bin == "mumu" ){
+    f1->SetParLimits(  0, -5e-04, -1e-01);
+    f1->SetParLimits(  1,  1e-04,      1);
+    f1->SetParLimits(  2,  1e-08,  1e-02);
+    f1->SetParLimits(  3,      0,     10);
+    f1->SetParLimits(  4,      0,     10);
+    }
+    else if( cat == "geq1jets" && bin == "ee" ){
+    f1->SetParLimits(  0, -5e-03,  -1e-01);
+    f1->SetParLimits(  1,  1e-03,       1);
+    f1->SetParLimits(  2,  1e-09,   1e-05);
+    f1->SetParLimits(  3,      0,      10);
+    f1->SetParLimits(  4,      0,      10);
+    }*/
+  cout << "test du fit" << endl;
+  //hf->Fit( f1, "R");
+  hf->Fit( f1);
+  cout << "retourne f1" << endl;
+  return f1;   
+}
+
+
+
 
 TH1D* SetLogHisto(TH1D *hf){
 
-        TH1D *loghf = new TH1D("","", 1500, 0, 1500);
-        int  ncells = hf->GetSize();
+  TH1D *loghf = new TH1D("","", 1500, 0, 1500);
+  int  ncells = hf->GetSize();
 
-        for(int bin=0;bin<(ncells-1);bin++){
-           if(hf->GetBinContent(bin)>0){
-               loghf->SetBinContent( bin, log10(hf->GetBinContent(bin)));
-               loghf->SetBinError( bin, (hf->GetBinError(bin)/hf->GetBinContent(bin)));
-           }
-        }
-    
-        return loghf;
+  for(int bin=0;bin<(ncells-1);bin++){
+    if(hf->GetBinContent(bin)>0){
+      loghf->SetBinContent( bin, log10(hf->GetBinContent(bin)));
+      loghf->SetBinError( bin, log10(hf->GetBinError(bin)));
+    }
+  }
+	//TString hf_title = hf->GetYaxis()->GetTitle();
+	//loghf->GetYaxis()->SetTitle("log_{10}("+hf_title+")");
+  return loghf;
 }
 
-TGraphErrors* FillHistoWgts(TF1* flep, TF1* fphot, bool cutOnBinContent){
-    TGraphErrors *hweights = new TGraphErrors(3000);
-    int n=0;
-    int I=0;
-    for(double mom = 55; mom<3000; mom += 1){
-//        if( std::pow(10, flep->Eval(mom))<1 && cutOnBinContent ){ n++; }
-//        else if( std::pow(10, flep->Eval(mom))<15 && !cutOnBinContent ){ n++; }
-//	if(n>0) continue;
-	hweights->SetPoint(I, mom, std::pow(10, flep->Eval(mom) - fphot->Eval(mom) ) ); 
-	hweights->SetPointError(I, 1, 0);
-        I++;
-    }hweights->Set(I);
-    return hweights;
-}  
+TGraphErrors* FillHistoWgts(TF1* flep, TF1* fphot, bool cutOnBinContent, TH1D* hlep, TH1D* hphot){
+  TGraphErrors *hweights = new TGraphErrors(3000);
+  int n=0;
+  int I=0;
 
-int main(int argc, char* argv[]){
-   setTDRStyle();  
-   gStyle->SetPadTopMargin   (0.06);
-   gStyle->SetPadBottomMargin(0.12);
-   gStyle->SetPadRightMargin (0.16);
-   gStyle->SetPadLeftMargin  (0.14);
-   gStyle->SetTitleSize(0.04, "XYZ");
-   gStyle->SetTitleXOffset(1.1);
-   gStyle->SetTitleYOffset(1.45);
-   gStyle->SetPalette(1);
-   gStyle->SetNdivisions(505);
+  double LepMin = flep->GetMinimumX(0, 2000);
+  double PhotpMin = hphot->GetMinimumBin();
 
-   //FIXME these are currently hard-coded, but we should pass them via parameters using the code just bellow
-   bool isData=true;
-   bool bfit=false;
-   int  rbin=1;
-   bool asym=false;
-   int rebin=1;
-   string gDataFile = "plotter_2016_01_18_forPhotonWeights.root";
-   string zDataFile = "plotter_2016_01_18_forPhotonWeights.root";
-   string outDir    = "photonWeights/";
-   string outFile   = outDir + "photonWeights.root";
+  //for(double bin=56; bin<((hphot->GetNbinsX())-1); bin++){
+  for(double bin=0; bin<((hphot->GetNbinsX())-1); bin++){
+		double mom = hphot->GetBinCenter(bin); 
+    double ratio = 0;
+    //if( hphot->GetBinContent(bin) > 0 ) ratio = pow(10,flep->Eval(std::min(LepMin,mom)))/hphot->GetBinContent(bin);
+    if( hphot->GetBinContent(bin) > 0 ) ratio = pow(10,flep->Eval(std::min(LepMin,mom)))/pow(10,fphot->Eval(std::min(LepMin,mom)));
+    if(pow(10,flep->Eval(mom))<0.1 || isnan((float)ratio) || mom>LepMin){
+      hweights->SetPoint(I, mom, 0 ); 
+   	  hweights->SetPointError(I, 1, 0);
+    }else{
+      //printf("debug mom=%f lep=%f pot=%f ratio=%f\n", mom, flep->Eval(mom), fphot->Eval(mom), ratio);
+      hweights->SetPoint(I, mom, ratio ); 
+   	  hweights->SetPointError(I, 1, 0);
+    }
+    I++;
+  }hweights->Set(I);
 
-   for(int i=1;i<argc;i++){
-     string arg(argv[i]);
-     if(arg.find("--help")!=string::npos){
-        printf("--help    --> print this helping text\n");
-        printf("--inFile  --> path of the plotter .root file with inputs\n");
-        printf("--outDir  --> path of the output directory to save the plots\n");
-        printf("--outFile --> path of the output summary .root file\n");
-        printf("--fitf    --> use fitting functions to compute weights\n");
-	return 0;
-     }
-     if(arg.find("--inFile" )!=string::npos && i+1<argc){ zDataFile= argv[i+1];  gDataFile= argv[i+1]; i++; printf("input file = %s\n", zDataFile.c_str()); }
-     if(arg.find("--outFile")!=string::npos && i+1<argc){ outFile  = argv[i+1];  i++; printf("output file = %s\n", outFile.c_str()); }
-     if(arg.find("--outDir" )!=string::npos && i+1<argc){ outDir   = argv[i+1];  i++; printf("outDir = %s\n", outDir.c_str());  }
-     if(arg.find("--fitf")!=string::npos && i+1<argc){ bfit = argv[i+1];  i++; }
-   }
-   system( (string("mkdir -p ") + outDir).c_str());
-
-
-  std::vector<string> gDataDir;
-  std::vector<string> zDataDir;
-  if(isData){
-     gDataDir.push_back("#gamma data_reweighted");
-     zDataDir.push_back("data");
-  }else{
-     gDataDir.push_back("GJets_HT-40to100");
-     gDataDir.push_back("GJets_HT-100to200");
-     gDataDir.push_back("GJets_HT-200to400");
-     gDataDir.push_back("GJets_HT-400to600");
-     gDataDir.push_back("GJets_HT-600toInf");
-     zDataDir.push_back("Z#rightarrow ll");
+	/*    
+  //CHECK Intergral of reweighted photon
+  double reweightedIntegral=0;
+  for(int bin=1;bin<=hphot->GetNbinsX();bin++){
+  double weight=hweights->Eval(hphot->GetBinCenter(bin));
+  if(weight>10)continue; //should be less than 1 in principle
+  reweightedIntegral += hphot->GetBinContent(bin) * hweights->Eval(hphot->GetBinCenter(bin));
+  printf("bin=%i content=%f weigh=%f integral=%f\n", bin, hphot->GetBinContent(bin), hweights->Eval(hphot->GetBinCenter(bin)), reweightedIntegral);
   }
+  double scaleFactor = hlep->Integral()/reweightedIntegral;
+  printf("ReweightedIntegral=%f vs lep integral=%f --> scale weights by %f  (debug%f)\n", reweightedIntegral, hlep->Integral(), scaleFactor, hphot->Integral());
 
-  std::vector<int> catColor = {4     , 2   , 8   , 1    };
-  std::vector<string> catL  = {"#mu#mu", "ee", "ll", "#gamma"};
-  std::vector<string> binL  = {"=0jet", "#geq1jets", "vbf"};
+  //rescale weight graph
+  for(int i=0;i<hweights->GetN();i++){  hweights->SetPoint(i,hweights->GetX()[i], hweights->GetY()[i]*scaleFactor);}
+	*/
 
-  std::vector<string> cat   = {"mumu", "ee", "ll", "gamma"};
-  std::vector<string> bin   = {"eq0jets","geq1jets","vbf"};
-  std::vector<string> var   = {"_qt", "_qmass", "_met", "_mt"};
+  return hweights;
+}
 
-  std::map<string, TH1D*> DataHistos;
-  std::map<string, TF1* > FitFunctionMap;
-  std::map<string, TGraphErrors*> WeightsFitFunction;
- 
-  for(unsigned int c=0;c<cat.size();c++){
-  for(unsigned int b=0;b<bin.size();b++){
-  for(unsigned int v=0;v<var.size();v++){
-     string& DataFile             = (cat[c]=="gamma")?gDataFile:zDataFile;
-     std::vector<string>& DataDir = (cat[c]=="gamma")?gDataDir :zDataDir;
+TGraphErrors* FillHistWgtsVbf( TGraphErrors* Weights, TH1D* hphot_geq1jet, TH1D* hphot_vbf, TH1D* hqt_geq1jet, TH1D* hqt_vbf){
 
-     TFile* File = new TFile(DataFile.c_str(), "READ");
-     if(!File || File->IsZombie() || !File->IsOpen() || File->TestBit(TFile::kRecovered) ){
-        printf("File %s coudn't be opened\n", DataFile.c_str());
-     }
-
-     for(unsigned int d=0;d<DataDir.size();d++){
-        TH1D* hist = NULL;
-//        if(cat[c]=="photon"){ //read photon info form ee channel
-//           hist = (TH1D*) File->Get((DataDir[d]+"/"+"ee"+bin[b]+var[v]).c_str());        
-//        }else{
-           hist = (TH1D*) File->Get((DataDir[d]+"/"+cat[c]+bin[b]+var[v]).c_str());        
-//        }
-        if(!hist)continue;
-
-        hist->GetSumw2();
-        if(rbin>1){ hist->Rebin(rbin);  hist->Scale(1.0, "width"); }
-        hist->GetXaxis()->SetTitleSize(.055);
-        hist->GetYaxis()->SetTitleSize(.055);
-        hist->GetXaxis()->SetLabelSize(.05);
-        hist->GetYaxis()->SetLabelSize(.05);
-        hist->SetFillColor(0);
-        hist->SetLineColor(catColor[c]);
-        hist->SetMarkerColor(catColor[c]);
-        hist->SetStats(kFALSE);
-
-        if(DataHistos.find(cat[c]+bin[b]+var[v])==DataHistos.end()){
-           gROOT->cd(); //make sure that the file is saved in memory and not in file
-           DataHistos[cat[c]+bin[b]+var[v]] = (TH1D*)hist->Clone(); //create a new histo, since it's not found
-        }else{
-           DataHistos[cat[c]+bin[b]+var[v]]->Add(hist); //add to existing histogram
-        }
-     
-        //Compute the fitting function for evey histogram in eq0jets and geq1jets, in ee-mumu-gamma channel. For VBF, we used geq1jets fuctions reweighted in such a way the integral is still ok.
-        if( var[v]!="_qt" ) continue; //Considering only qt distribution
-	if( bin[b] == "vbf" && ( cat[c] == "ee" || cat[c] == "mumu" || cat[c] == "ll" )){
-		TH1D *hvbf = (TH1D*) File->Get((DataDir[d]+"/"+cat[c]+"vbf"+var[v]).c_str());
-		hist = (TH1D*) File->Get((DataDir[d]+"/"+cat[c]+"geq1jets"+var[v]).c_str());	
-		hist->Scale(hvbf->Integral()/hist->Integral());
-		FitFunctionMap[cat[c]+"vbf"+var[v]] = FitFunction( hist, true);
-	}else if( bin[b] !="vbf" || cat[c] == "gamma" ){
-                FitFunctionMap[cat[c]+bin[b]+var[v]] =  FitFunction( hist, false);
+	TH1D*   geq1jets = (TH1D*)hphot_geq1jet->Clone("photon_geq1jets");
+	TH1D*        vbf = (TH1D*)hphot_vbf->Clone("photon_vbf");
+	TH1D* qtgeq1jets = (TH1D*)hqt_geq1jet->Clone("qt_geq1jets");
+	TH1D*      qtvbf = (TH1D*)hqt_vbf->Clone("qt_vbf");
+  TGraphErrors* weights = (TGraphErrors*)Weights->Clone("weights");
+  geq1jets->Divide( vbf );
+	qtvbf->Divide( qtgeq1jets );
+	for(int i=0; i<weights->GetN(); i++){ 
+		double qt = weights->GetX()[i];
+		//for(double bin=55; bin<geq1jets->GetNbinsX(); bin++){
+		for(double bin=0; bin<geq1jets->GetNbinsX(); bin++){
+			if( bin == qt ){ 
+				double  beta = geq1jets->GetBinContent( bin );
+				double alpha = qtvbf->GetBinContent( bin );
+				weights->GetY()[i] *= beta*alpha; 
+			}
+		}
 	}
-     } 
 
-     File->Close();
-  }}}//all histos are now loaded
+	return weights;	
+	} 
 
-  
-  //non fixed-width rebins
-  if(asym){
-     double xbins[] = {55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 110, 120, 130, 140, 150, 165, 250, 300, 400, 500, 700, 1000, 1500};    
-     for(unsigned int v=0;v<var.size();v++){
-        if(var[v]!="_qt")continue;
-        for(unsigned int b=0;b<bin.size();b++){
-           for(unsigned int c=0;c<cat.size();c++){
-              if(DataHistos.find(cat[c]+bin[b]+var[v])==DataHistos.end()){continue;}
-              TH1D* hist = DataHistos[cat[c]+bin[b]+var[v]];        
-              hist = (TH1D*)hist->Clone((cat[c]+bin[b]+var[v]+"rebin").c_str());
-              hist = (TH1D*)hist->Rebin((sizeof(xbins)/sizeof(double))-1, hist->GetName(), xbins);             
-              hist->Scale(1.0, "width");
-              DataHistos[cat[c]+bin[b]+var[v]+"rebin"] = hist;
-           }
-        }
-        printf("add variable %s\n", (var[v]+"rebin").c_str());
-        var.push_back(var[v]+"rebin");
-     }
-  }
- 
-  //compute the weight
-  for(unsigned int v=0;v<var.size();v++){
-     if(var[v]!="_qt" && var[v]!="_qtrebin")continue;
-     for(unsigned int b=0;b<bin.size();b++){     
-	if(DataHistos.find(string("gamma")+bin[b]+var[v])==DataHistos.end()){printf("Histo missing for %s\n", (string("gamma")+bin[b]+var[v]).c_str()); continue;}
-        TH1D* histgamma = DataHistos[string("gamma")+bin[b]+var[v]];
-	if(FitFunctionMap.find(string("gamma")+bin[b]+var[v])==FitFunctionMap.end()){printf("Function missing for %s\n", (string("gamma")+bin[b]+var[v]).c_str()); continue;}
-        TF1 *fphot = FitFunctionMap[string("gamma")+bin[b]+var[v]];
+TF1* FillHistoWgts_Hugo(TF1* flep, TF1* fphot){
 
-        for(unsigned int c=0;c<cat.size();c++){
-           if(cat[c]=="gamma")continue;
-	    
-           if(bfit){
-	       if(FitFunctionMap.find(cat[c]+bin[b]+var[v])==FitFunctionMap.end()){printf("Function missing for %s\n", (cat[c]+bin[b]+var[v]).c_str()); continue;}
-	       TF1  *flep = FitFunctionMap[cat[c]+bin[b]+var[v]]; 
-	       if( bin[b] == "vbf" && ( cat[c] == "ee" || cat[c] == "mumu" || cat[c] == "ll" )){
-                   WeightsFitFunction[ cat[c]+bin[b]+var[v]+"weight"]= FillHistoWgts(flep,fphot, true);
-	       } else if( bin[b] !="vbf" || cat[c] == "gamma" ){
-                   WeightsFitFunction[ cat[c]+bin[b]+var[v]+"weight"]= FillHistoWgts(flep,fphot, false);
-	       }
-	        
-	   } else if(!bfit){
-               if(DataHistos.find(cat[c]+bin[b]+var[v])==DataHistos.end()){printf("Histo missing for %s\n", (cat[c]+bin[b]+var[v]).c_str()); continue;}
-               TH1D* hist = DataHistos[cat[c]+bin[b]+var[v]];
-               hist = (TH1D*)hist->Clone((cat[c]+bin[b]+var[v]+"weight").c_str());
-               hist->Divide(histgamma);
-               DataHistos[cat[c]+bin[b]+var[v]+"weight"] = hist;
-           }
-        }
-     }
-     printf("add variable %s\n", (var[v]+"weight").c_str());
-     var.push_back(var[v]+"weight");
-  }
+	//std::string ratio_function = flep->GetName()+"/"+fphot->GetName();
+	//TString ratio_function = string(flep->GetName()+"/"+fphot->GetName());
+	TString ratio_function = flep->GetName();
+	ratio_function += "/";
+	ratio_function += fphot->GetName();
+	
+	cout << "NAME : " << ratio_function <<endl;
+	//TF1 *fratio = new TF1("fratio", ratio_function.c_str(), 0, 500);
+	TF1 *fratio = new TF1("fratio", ratio_function, 55, 500);
 
-  //make the plots
-  if(!bfit){
-  for(unsigned int v=0;v<var.size();v++){
-     double xmin,xmax;
-     double ymin=0.5, ymax=1E6;
-     if (var[v]=="_qt" || var[v]=="_qtrebin") {                    xmin=55.00; xmax=1000.00;
-     } else if (var[v]=="_qtweight" || var[v]=="_qtrebinweight") { xmin=55.00; xmax=1000.00; ymin=0.0001;  ymax=0.5;
-     } else if( (var[v]=="_met") || var[v]=="_mt") {               xmin=1.; xmax=1000.0;
-     } else{                                                       xmin=1.; xmax=1000.0;    
-     }
-
-     TCanvas* c1 =new TCanvas("c1","c1",500*bin.size(), 500);
-     c1->Divide(bin.size(),1);
-
-     for(unsigned int b=0;b<bin.size();b++){
-        c1->cd(1+b);
-        if(var[v]!="_qtweight" || var[v]!="_qtrebinweight") gPad->SetLogy(); if(var[v]=="_qt" || var[v]=="_qtrebin")gPad->SetLogx();
-        TLegend* leg = new TLegend(0.52,0.67,0.92,0.90);
-        leg->SetFillStyle(0);
-        leg->SetBorderSize(0);
-        leg->SetTextSize(0.04);
-        leg->SetTextFont(42);
-        leg->SetHeader(binL[b].c_str());
-
-        bool axisDrawn=false;
-        for(unsigned int c=0;c<cat.size();c++){
-           if(cat[c]=="ll")continue;  //do not ll on the plots
-           if(DataHistos.find(cat[c]+bin[b]+var[v])==DataHistos.end()){printf("Histo missing for %s\n", (cat[c]+bin[b]+var[v]).c_str()); continue;}
-           TH1D* hist = DataHistos[cat[c]+bin[b]+var[v]];
-           hist->GetXaxis()->SetRangeUser(xmin,xmax);
-           hist->GetYaxis()->SetRangeUser(ymin,ymax);
-
-           if(!axisDrawn){hist->Draw("AXIS"); axisDrawn=true;}
-           hist->Draw("HIST E1 same");           
-           leg->AddEntry(hist, catL[c].c_str(), "LP"); 
-       }
-       leg->Draw("SAME");
-    }
-    c1->SaveAs((outDir + "/PhotonWeight"+var[v]+".png").c_str());
-   }
-   }
-
-  //Save Fit
-  if(bfit){ 
-    for(unsigned int v=0;v<var.size();v++){
-       if(var[v]=="_qtrebin" || var[v]=="_qtweight" || var[v]=="_qtrebinweight" ) continue;
-       for(unsigned int c=0;c<cat.size();c++){
-	  string canvas_name;
-          TCanvas* c1 =new TCanvas("c1","c1",500*bin.size(), 500);
-          c1->Divide(bin.size(),1);
-          for(unsigned int b=0;b<bin.size();b++){
-	     c1->cd(1+b);
-             TLegend* leg = new TLegend(0.52,0.67,0.92,0.90);
-             leg->SetFillStyle(0);
-             leg->SetBorderSize(0);
-             leg->SetTextSize(0.04);
-             leg->SetTextFont(42);
-             leg->SetHeader(binL[b].c_str());
-	     TH1D* hist = NULL;
-             if(var[v]=="_qt"){
-		TF1 *f1 = NULL;
-		hist = SetLogHisto(DataHistos[cat[c]+bin[b]+var[v]]); 
-		f1 = FitFunctionMap[cat[c]+bin[b]+var[v]];
-		f1->SetParameter(0, rebin*f1->GetParameter(0));
-                f1->SetLineColor(kRed);
-                f1->SetLineWidth(2);
-	        hist->SetStats(false);
-		hist->Rebin(rebin);
-		hist->Draw("AP");
-		f1->Draw("same");
-        	hist->GetXaxis()->SetTitle("q_{T} [GeV]");
-		hist->GetXaxis()->SetRangeUser(55,500); 
-		hist->GetXaxis()->SetTitleOffset(0.8);
-        	hist->GetYaxis()->SetTitle("Events");
-		hist->GetYaxis()->SetTitleOffset(0.8); 
-		canvas_name = "/FittingFunction_"+cat[c]+var[v];
-	     } else {
-		hist = DataHistos[cat[c]+bin[b]+var[v]];
-                hist->GetXaxis()->SetRangeUser(  1., 1000);
-                hist->GetYaxis()->SetRangeUser( 0.5,  1E6);
-		hist->Draw("HIST E1 same`");
-		canvas_name = "/PhotonDistribution_"+cat[c]+var[v];
-	     }
-             leg->AddEntry(hist, catL[c].c_str(), "LP");
-	     leg->Draw("SAME");
-	  } 
-          c1->SaveAs((outDir + canvas_name +".png").c_str());
-       }
-    }
-  }
-
-  //SAVE THE material to the weight file
-  TFile* OutputFile = new TFile(outFile.c_str(),"RECREATE");
-  OutputFile->cd();
-  for(unsigned int c=0;c<cat.size();c++){
-     if(cat[c]=="gamma")continue;
-     for(unsigned int b=0;b<bin.size();b++){
-     for(unsigned int v=0;v<var.size();v++){
-             if(!bfit){ if(DataHistos.find(cat[c]+bin[b]+var[v])==DataHistos.end()){printf("Histo missing for %s\n", (cat[c]+bin[b]+var[v]).c_str()); continue;} }
-
-             TH1D* hist = DataHistos[cat[c]+bin[b]+var[v]];
-             if(bfit){
-                 if(var[v]=="_qtweight"){ 			   
-			   TGraphErrors* graph = WeightsFitFunction[cat[c]+bin[b]+"_qtweight"];
-			   graph->Write((cat[c]+bin[b]+"_qt_datafitfunctionwgts").c_str()); 
-                 }
-             } else if(!bfit) { 
-             	 if(var[v]=="_qtweight"){
-                	   TGraphErrors* graph = new TGraphErrors(hist);
-                	   graph->Write((cat[c]+bin[b]+"_qt_datafitwgts").c_str());
-            	 }else if(var[v]=="_qtrebinweight"){
-                 	   TGraphErrors* graph = new TGraphErrors(hist);
-                	   graph->Write((cat[c]+bin[b]+"_qt_datafitwgtsrebin").c_str()); 
-             	}
-             }
-
-             if(var[v]=="_qmass"){
-                     //replace VBF by geq1jets has there is no stat in VBF for Z candidates
-                     if(bin[b]=="vbf")continue;  
-                     if(bin[b]=="geq1jets"){
-                          hist->Write((cat[c]+"vbf"+"_zmass").c_str());  
-                     }
-                     hist->Write((cat[c]+bin[b]+"_zmass").c_str());
-             }
-        }
-     }
-  }
-  OutputFile->Write(); OutputFile->Close();
+  return fratio;
 }
+
+
+
+
+	TGraphErrors* NormalizeWeight( TGraphErrors* Weights, TH1D* hlep, TH1D* hphot){
+		cout << "entering normalize" << endl;
+  	TH1D* phot = (TH1D*)hphot->Clone("PhotonRescale");
+		TH1D*  lep = (TH1D*)hlep->Clone("LepRescale");
+		cout << "define TGraphErrors" << endl;
+  	TGraphErrors* Weights_Nr = (TGraphErrors*)Weights->Clone("TmpGraph");
+  	cout << "get size of bins" << endl;
+  	int total_bins = hphot->GetSize();
+  	cout << "enter loop to set bin content" << endl;
+		for( int bin=1; bin<total_bins; bin++){
+			phot->SetBinContent( bin, phot->GetBinContent(bin)*Weights->Eval(phot->GetBinCenter(bin)));
+		}
+		double norm_fact = 0;
+		cout << "compute integral ratio" << endl;
+		norm_fact = lep->Integral()/phot->Integral();
+		cout << "change TGraph" << endl;
+		for (int i=0;i< Weights_Nr->GetN();i++){ Weights_Nr->GetY()[i] *= norm_fact;}
+
+		return Weights_Nr;	
+	} 
+
+	int main(int argc, char* argv[]){
+  	setTDRStyle();  
+  	gStyle->SetPadTopMargin   (0.06);
+  	gStyle->SetPadBottomMargin(0.12);
+  	gStyle->SetPadRightMargin (0.16);
+  	gStyle->SetPadLeftMargin  (0.14);
+  	gStyle->SetTitleSize(0.04, "XYZ");
+  	gStyle->SetTitleXOffset(1.1);
+  	gStyle->SetTitleYOffset(1.45);
+  	gStyle->SetPalette(1);
+  	gStyle->SetNdivisions(505);
+
+  	cout << " We are here : %d " << __LINE__ << endl;
+
+  	//FIXME these are currently hard-coded, but we should pass them via parameters using the code just bellow
+  	bool isData=true;
+  	bool bfit=false;
+  	int  rbin=1;
+  	bool asym=true;
+  	int rebin=1;
+  	string gDataFile = "plotter_2016_01_18_forPhotonWeights.root";
+  	string zDataFile = "plotter_2016_01_18_forPhotonWeights.root";
+  	string outDir    = "photonWeights/";
+  	string outFile   = outDir + "photonWeights.root";
+  	cout << " We are here : %d " << __LINE__ << endl;
+
+  	for(int i=1;i<argc;i++){
+    	string arg(argv[i]);
+    	if(arg.find("--help")!=string::npos){
+      	printf("--help    --> print this helping text\n");
+      	printf("--inFile  --> path of the plotter .root file with inputs\n");
+      	printf("--outDir  --> path of the output directory to save the plots\n");
+      	printf("--outFile --> path of the output summary .root file\n");
+      	printf("--fitf    --> use fitting functions to compute weights\n");
+				return 0;
+    	}
+    	if(arg.find("--inFile" )!=string::npos && i+1<argc){ zDataFile= argv[i+1];  gDataFile= argv[i+1]; i++; printf("input file = %s\n", zDataFile.c_str()); }
+    	if(arg.find("--outFile")!=string::npos && i+1<argc){ outFile  = argv[i+1];  i++; printf("output file = %s\n", outFile.c_str()); }
+    	if(arg.find("--outDir" )!=string::npos && i+1<argc){ outDir   = argv[i+1]+std::string("/");  i++; printf("outDir = %s\n", outDir.c_str());  }
+    	if(arg.find("--fitf")!=string::npos && i+1<argc){ bfit = argv[i+1];  i++; }
+  	}
+  	system( (string("mkdir -p ") + outDir).c_str());
+
+
+  	std::vector<string> gDataDir;
+  	std::vector<string> zDataDir;
+  	if(isData){
+    	gDataDir.push_back("#gamma data_reweighted");
+    	zDataDir.push_back("data");
+  	}else{
+    	gDataDir.push_back("#gamma+jets");
+    	zDataDir.push_back("Z#rightarrow ll");
+  	}
+  	cout << " We are here : %d " << __LINE__ << endl;
+
+  	std::vector<int> catColor = {4     , 2   , 8   , 1    };
+  	std::vector<string> catL  = {"#mu#mu", "ee", "ll", "#gamma"};
+  	//std::vector<string> binL  = {"=0jet", "#geq1jets", "vbf"};
+  	std::vector<string> binL  = {"=0jet", "#geq1jets"};
+
+  	std::vector<string> cat   = {"mumu", "ee", "ll", "gamma"};
+  	//std::vector<string> bin   = {"eq0jets","geq1jets","vbf"};
+  	std::vector<string> bin   = {"eq0jets","geq1jets"};
+  	std::vector<string> var   = {"_qt", "_qmass", "_met", "_mt"};
+
+  	std::map<string, TH1D*> DataHistos;
+  	std::map<string, TF1* > FitFunctionMap;
+  	std::map<string, TGraphErrors*> WeightsFitFunction;
+  	std::map<string, TF1*> WeightsFitFunction_Hugo;
+  	std::map<string, TGraphErrors*> WeightsFitFunctionNorm;
+  	cout << " We are here : %d " << __LINE__ << endl;
+
+  	for(unsigned int c=0;c<cat.size();c++){
+  		for(unsigned int b=0;b<bin.size();b++){
+  			for(unsigned int v=0;v<var.size();v++){
+     			string& DataFile             = (cat[c]=="gamma")?gDataFile:zDataFile;
+     			std::vector<string>& DataDir = (cat[c]=="gamma")?gDataDir :zDataDir;
+
+     			TFile* File = new TFile(DataFile.c_str(), "READ");
+     			if(!File || File->IsZombie() || !File->IsOpen() || File->TestBit(TFile::kRecovered) ){
+        		printf("File %s coudn't be opened\n", DataFile.c_str());
+     			}
+
+     			for(unsigned int d=0;d<DataDir.size();d++){
+        		TH1D* hist = NULL;
+						//        if(cat[c]=="photon"){ //read photon info form ee channel
+						//           hist = (TH1D*) File->Get((DataDir[d]+"/"+"ee"+bin[b]+var[v]).c_str());        
+						//        }else{
+          	hist = (TH1D*) File->Get((DataDir[d]+"/"+cat[c]+bin[b]+var[v]).c_str());        
+						//        }
+        		if(!hist)continue;
+
+        		hist->GetSumw2();
+        		if(rbin>1){ hist->Rebin(rbin);  hist->Scale(1.0, "width"); }
+        		hist->GetXaxis()->SetTitleSize(.055);
+        		hist->GetYaxis()->SetTitleSize(.055);
+        		hist->GetXaxis()->SetLabelSize(.05);
+        		hist->GetYaxis()->SetLabelSize(.05);
+        		hist->SetFillColor(0);
+        		hist->SetLineColor(catColor[c]);
+        		hist->SetMarkerColor(catColor[c]);
+        		hist->SetStats(kFALSE);
+
+        		if(DataHistos.find(cat[c]+bin[b]+var[v])==DataHistos.end()){
+           		gROOT->cd(); //make sure that the file is saved in memory and not in file
+           		DataHistos[cat[c]+bin[b]+var[v]] = (TH1D*)hist->Clone(); //create a new histo, since it's not found
+        		}else{
+           		DataHistos[cat[c]+bin[b]+var[v]]->Add(hist); //add to existing histogram
+        		}     
+     			} 
+
+     			File->Close();
+  			}}}//all histos are now loaded
+
+  	cout << " We are here : %d " << __LINE__ << endl;
+
+  	//non fixed-width rebins
+    double xbins[] = {55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 110, 120, 130, 140, 150, 165, 250, 300, 400, 500, 700, 1000, 1500};    
+  	if(asym){
+  		cout << " In asym loop " << endl;
+    	for(unsigned int v=0;v<var.size();v++){
+      	if(var[v]!="_qt")continue;
+      	for(unsigned int b=0;b<bin.size();b++){
+        	for(unsigned int c=0;c<cat.size();c++){
+  					cout << " Datafile: " << cat[c] <<bin[b] <<var[v] << endl;
+          	if(DataHistos.find(cat[c]+bin[b]+var[v])==DataHistos.end()){continue;}
+          	TCanvas* c2 = new TCanvas();
+          	c2->cd();
+          	TH1D* hist = DataHistos[cat[c]+bin[b]+var[v]];        
+          	hist = (TH1D*)hist->Clone((cat[c]+bin[b]+var[v]+"rebin").c_str());
+          	hist = (TH1D*)hist->Rebin((sizeof(xbins)/sizeof(double))-1, hist->GetName(), xbins);             
+          	hist->Scale(1.0, "width");
+          	DataHistos[cat[c]+bin[b]+var[v]+"rebin"] = hist;
+     				gPad->SetLogy();
+     				hist->Draw();
+     				c2->SaveAs((outDir + "/test_"+cat[c]+bin[b]+var[v]+"rebin.png").c_str());
+     				c2->SaveAs((outDir + "/test_"+cat[c]+bin[b]+var[v]+"rebin.root").c_str());
+     			}
+      	}
+      	printf("add variable %s\n", (var[v]+"rebin").c_str());
+      	var.push_back(var[v]+"rebin");
+    	}
+  	}
+  	cout << " We are here : %d " << __LINE__ << endl;
+
+  	//Adding ee and mumu histos togheter
+  	for(unsigned int b=0;b<bin.size();b++){
+  		for(unsigned int v=0;v<var.size();v++){
+     		TH1D *hist_mumu = DataHistos["mumu"+bin[b]+var[v]];
+     		TH1D *hist_ee = DataHistos["ee"+bin[b]+var[v]];
+				TH1D *hist_sum = hist_ee;
+				hist_sum->Add(hist_mumu);
+				/*if(var[v]=="_qtrebin") hist = new TH1D( "", "", (hist_mumu->GetSize()-2), xbins);
+				else hist = new TH1D( "", "", (hist_mumu->GetSize()-2), 0, 1.25*(hist_mumu->GetBinContent(1)+hist_ee->GetBinContent(1)));
+
+     		for(int k=0; k<hist_mumu->GetSize(); k++){
+					hist->SetBinContent( k, hist_mumu->GetBinContent(k)+hist_ee->GetBinContent(k));
+     		}
+*/
+
+
+     		if(DataHistos.find("all"+bin[b]+var[v])==DataHistos.end()){
+        	gROOT->cd(); //make sure that the file is saved in memory and not in file
+        	DataHistos["all"+bin[b]+var[v]] = (TH1D*)hist_sum->Clone(); //create a new histo, since it's not found
+     		}else{
+        	cout << "OMG LE FICHIER EXISTE DEJA : " << bin[b] << var[v] << endl;
+        	DataHistos["all"+bin[b]+var[v]]->Add(hist_sum); //add to existing histogram
+     		}
+  		}}
+
+  	cat.push_back("all");
+  	catColor.push_back(6);
+  	catL.push_back("all");
+  	cout << " We are here : %d " << __LINE__ << endl;
+
+
+
+
+  	//Compute the fitting function for every histogram in eq0jets and geq1jets, in ee-mumu-gamma channel. For VBF, we used geq1jets fuctions reweighted in such a way the integral is still ok.
+  	for(unsigned int c=0;c<cat.size();c++){
+  		for(unsigned int b=0;b<bin.size();b++){
+  			for(unsigned int v=0;v<var.size();v++){
+     			if( var[v]!="_qt" && var[v]!="_qtrebin" ) continue; //Considering only qt distribution
+     			if( cat[c] == "ll" ) continue;
+     			if( bin[b] == "vbf" ){
+        		FitFunctionMap[cat[c]+bin[b]+var[v]] =  FitFunction(DataHistos[cat[c]+"geq1jets"+var[v]], (DataHistos[cat[c]+"vbf"+var[v]]->Integral()/DataHistos[cat[c]+"geq1jets"+var[v]]->Integral()), bin[b], cat[c]);
+     			}else if( bin[b] !="vbf" ){
+        		if(var[v]=="_qt") FitFunctionMap[cat[c]+bin[b]+var[v]] =  FitFunction(DataHistos[cat[c]+bin[b]+var[v]], 1.0, bin[b], cat[c]);
+        		if(var[v]=="_qtrebin") FitFunctionMap[cat[c]+bin[b]+var[v]] =  FitFunction_noLog(DataHistos[cat[c]+bin[b]+var[v]], 1.0, bin[b], cat[c]);
+        		//if(var[v]=="_qtrebin") FitFunctionMap[cat[c]+bin[b]+var[v]] =  FitFunction(DataHistos[cat[c]+bin[b]+var[v]], 1.0, bin[b], cat[c]);
+     			}    
+  			}}}//all histos are now loaded
+
+  	cout << " We are here : %d " << __LINE__ << endl;
+
+
+
+  	//compute the weight
+  	for(unsigned int v=0;v<var.size();v++){
+    	if(var[v]!="_qt" && var[v]!="_qtrebin")continue;
+    	for(unsigned int b=0;b<bin.size();b++){     
+				if(DataHistos.find(string("gamma")+bin[b]+var[v])==DataHistos.end()){printf("Histo missing for %s\n", (string("gamma")+bin[b]+var[v]).c_str()); continue;}
+      	TH1D* histgamma = DataHistos[string("gamma")+bin[b]+var[v]];
+				if(FitFunctionMap.find(string("gamma")+bin[b]+var[v])==FitFunctionMap.end()){printf("Function missing for %s\n", (string("gamma")+bin[b]+var[v]).c_str()); continue;}
+      	TF1 *fphot = FitFunctionMap[string("gamma")+bin[b]+var[v]];
+      	TH1D* hphot = DataHistos[string("gamma")+bin[b]+var[v]]; //idem que histgamma, 3 lignes plus haut
+
+      	for(unsigned int c=0;c<cat.size();c++){
+        	if(cat[c]=="gamma" || cat[c] == "ll" )continue;
+
+        	if(bfit){
+	       		if(FitFunctionMap.find(cat[c]+bin[b]+var[v])==FitFunctionMap.end()){printf("Function missing for %s\n", (cat[c]+bin[b]+var[v]).c_str()); continue;}
+	       		TF1  *flep = FitFunctionMap[cat[c]+bin[b]+var[v]];
+          	TH1D* hlep = DataHistos[cat[c]+bin[b]+var[v]];
+	       		if( bin[b] !="vbf" ){ WeightsFitFunction[ cat[c]+bin[b]+var[v]+"weight"]= FillHistoWgts(flep,fphot, false, hlep, hphot);}
+	       		if( bin[b] !="vbf" && var[v]=="_qtrebin" ){ WeightsFitFunction_Hugo[ cat[c]+bin[b]+var[v]+"weight"]= FillHistoWgts_Hugo(flep,fphot);}
+
+	   			} else if(!bfit){
+          	if(DataHistos.find(cat[c]+bin[b]+var[v])==DataHistos.end()){printf("Histo missing for %s\n", (cat[c]+bin[b]+var[v]).c_str()); continue;}
+          	TH1D* hist = DataHistos[cat[c]+bin[b]+var[v]];
+          	hist = (TH1D*)hist->Clone((cat[c]+bin[b]+var[v]+"weight").c_str());
+          	hist->Divide(histgamma);
+          	DataHistos[cat[c]+bin[b]+var[v]+"weight"] = hist;
+        	}
+      	}
+    	}
+    	printf("add variable %s\n", (var[v]+"weight").c_str());
+    	var.push_back(var[v]+"weight");
+  	}
+  	cout << " We are here : %d " << __LINE__ << endl;
+
+  	//The weights of VBF are computed starting from the weights geq1jets
+		/*  for(unsigned int c=0;c<cat.size();c++){
+				if( cat[c] == "gamma" || cat[c] == "ll" ) continue;
+   			WeightsFitFunction[ cat[c]+"vbf_qtweight"] = FillHistWgtsVbf( WeightsFitFunction[ cat[c]+"geq1jets_qtweight"], DataHistos["gammageq1jets_qt"], DataHistos["gammavbf_qt"], DataHistos[cat[c]+"geq1jets_qt"], DataHistos[cat[c]+"vbf_qt"]);
+  			}
+				*/ //HUGO FIXME
+
+  	cout << " We are here : %d " << __LINE__ << endl;
+/*
+  	//Normalize the weights to the integral.
+  	for(unsigned int v=0;v<var.size();v++){
+    	for(unsigned int b=0;b<bin.size();b++){
+      	for(unsigned int c=0;c<cat.size();c++){
+					if( var[v] != "_qt" && var[v]!= "_qtrebin") continue;
+					if( cat[c] == "gamma" || cat[c] == "ll" ) continue;
+					TH1D* hlep = DataHistos[cat[c]+bin[b]+var[v]];
+					TH1D* hphot = DataHistos[string("gamma")+bin[b]+var[v]];
+					cout<< "Launch NormalizeWeight on : " << cat[c]<<bin[b]<<var[v]<<endl;
+					WeightsFitFunctionNorm[cat[c]+bin[b]+var[v]+"weight_nr"] = NormalizeWeight( WeightsFitFunction[ cat[c]+bin[b]+var[v]+"weight"], hlep, hphot); 
+  			}}}
+
+  	var.push_back("_qtweight_nr");
+*/
+
+  	cout << " We are here : %d " << __LINE__ << endl;
+  	//make the plots
+  	if(!bfit){
+  		for(unsigned int v=0;v<var.size();v++){
+     		double xmin,xmax;
+     		double ymin=0.5, ymax=1E6;
+     		if (var[v]=="_qt" || var[v]=="_qtrebin") {                    xmin=55.00; xmax=1000.00;
+     		} else if (var[v]=="_qtweight" || var[v]=="_qtrebinweight" || var[v]=="_qtweight_nr") { xmin=55.00; xmax=1000.00; ymin=0.0001;  ymax=0.5;
+     		} else if( (var[v]=="_met") || var[v]=="_mt") {               xmin=1.; xmax=1000.0;
+     		} else{                                                       xmin=1.; xmax=1000.0;    
+     		}
+
+     		TCanvas* c1 =new TCanvas("c1","c1",500*bin.size(), 500);
+     		c1->Divide(bin.size(),1);
+
+     		for(unsigned int b=0;b<bin.size();b++){
+        	c1->cd(1+b);
+        	if(var[v]!="_qtweight" || var[v]!="_qtrebinweight") gPad->SetLogy(); if(var[v]=="_qt" || var[v]=="_qtrebin")gPad->SetLogx();
+        	TLegend* leg = new TLegend(0.52,0.67,0.92,0.90);
+        	leg->SetFillStyle(0);
+        	leg->SetBorderSize(0);
+        	leg->SetTextSize(0.04);
+        	leg->SetTextFont(42);
+        	leg->SetHeader(binL[b].c_str());
+
+        	bool axisDrawn=false;
+        	for(unsigned int c=0;c<cat.size();c++){
+          	if(cat[c]=="ll")continue;  //do not ll on the plots
+          	if(DataHistos.find(cat[c]+bin[b]+var[v])==DataHistos.end()){printf("Histo missing for %s\n", (cat[c]+bin[b]+var[v]).c_str()); continue;}
+          	TH1D* hist = DataHistos[cat[c]+bin[b]+var[v]];
+          	hist->GetXaxis()->SetRangeUser(xmin,xmax);
+          	hist->GetYaxis()->SetRangeUser(ymin,ymax);
+
+          	if(!axisDrawn){hist->Draw("AXIS"); axisDrawn=true;}
+          	hist->Draw("HIST E1 same");           
+          	leg->AddEntry(hist, catL[c].c_str(), "LP"); 
+       		}
+       		leg->Draw("SAME");
+    		}
+    		c1->SaveAs((outDir + "/PhotonWeight"+var[v]+".png").c_str());
+   		}
+  	}
+
+  	cout << " We are here : %d " << __LINE__ << endl;
+  	//Save Fit
+  	if(bfit){
+
+    	for(unsigned int v=0;v<var.size();v++){
+
+      	//if( var[v]=="_qtrebin" || var[v]=="_qtrebinweight" ) continue;
+      	for(unsigned int c=0;c<cat.size();c++){
+	  			string canvas_name;
+        	TCanvas* c1 = new TCanvas("c1","c1",500*bin.size(), 500);
+        	c1->Divide(bin.size(),2);
+
+        	for(unsigned int b=0;b<bin.size();b++){
+	     			c1->cd(1+b);//->SetLogy(true);
+
+          	TLegend* leg = new TLegend(0.52,0.67,0.92,0.90);
+          	leg->SetFillStyle(0);
+          	leg->SetBorderSize(0);
+          	leg->SetTextSize(0.04);
+          	leg->SetTextFont(42);
+          	leg->SetHeader(binL[b].c_str());
+	     			TH1D* hist = NULL;
+
+          	//if(var[v]=="_qt" || var[v]=="_qtrebin"){
+          	if(var[v]=="_qt"){
+          		//if( cat[c] == "ll" || cat[c] == "gamma" ) continue;
+          		if( cat[c] == "ll") continue;
+							cout << " Plante dans qt ?" << endl;
+							TF1 *f1 = NULL;
+							hist = SetLogHisto(DataHistos[cat[c]+bin[b]+var[v]]); 
+							//		hist = DataHistos[cat[c]+bin[b]+var[v]]; 
+							f1 = FitFunctionMap[cat[c]+bin[b]+var[v]];
+							//		f1->SetParameter(0, rebin*f1->GetParameter(0));
+            	f1->SetLineColor(kRed);
+            	f1->SetLineWidth(2);
+	        		hist->SetStats(false);
+							//		hist->Rebin(rebin);
+        			hist->GetXaxis()->SetTitle("q_{T} [GeV]");
+							hist->GetXaxis()->SetRangeUser(55,500); 
+							hist->GetXaxis()->SetTitleOffset(0.8);
+        			hist->GetYaxis()->SetTitle("log_{10}(Events)");
+							hist->GetYaxis()->SetTitleOffset(0.8); 
+ 							hist->Draw("HIST P same");
+							f1->Draw("same");              
+							canvas_name = "/FittingFunction_"+cat[c]+var[v];
+
+            	c1->cd(1+b+bin.size());//->SetLogy(true);
+            	f1->Draw();
+
+          	} else if(var[v]=="_qtrebin" ){
+          		//if( cat[c] == "ll" || cat[c] == "gamma" ) continue;
+          		if( cat[c] == "ll") continue;
+            	cout << " ou dans qtrebin ?" << endl;
+            	gPad->SetLogy();
+							TF1 *f1 = NULL;
+            	//hist = SetLogHisto(DataHistos[cat[c]+bin[b]+var[v]]); 
+            	hist = DataHistos[cat[c]+bin[b]+var[v]]; 
+            	cout << "hist a ete loade maintenant le fit" << endl;
+            	f1 = FitFunctionMap[cat[c]+bin[b]+var[v]];
+            	//    f1->SetParameter(0, rebin*f1->GetParameter(0));
+            	cout << "fit loade" << endl;
+            	f1->SetLineColor(kRed);
+            	f1->SetLineWidth(2);
+            	cout <<" set stat hist" << endl;
+            	hist->SetStats(false);
+            	//    hist->Rebin(rebin);
+            	hist->GetXaxis()->SetTitle("q_{T} [GeV]");
+            	hist->GetXaxis()->SetRangeUser(55,500); 
+            	hist->GetXaxis()->SetTitleOffset(0.8);
+            	hist->GetYaxis()->SetTitle("Events");
+            	hist->GetYaxis()->SetTitleOffset(0.8); 
+            	cout << " on draw hist" << endl;
+            	hist->Draw("HIST P same");
+            	f1->Draw("same");              
+            	canvas_name = "/FittingFunction_"+cat[c]+var[v];
+
+            	c1->cd(1+b+bin.size());//->SetLogy(true);
+            	f1->Draw(); 
+
+							cout << "fin" << endl;
+
+          	} else if(var[v]=="_qtweight_nr" ){
+            	if( cat[c] == "ll" || cat[c] == "gamma" || cat[c] == "all" ) continue;
+
+            	TGraphErrors* graph = NULL;
+            	graph = WeightsFitFunctionNorm[cat[c]+bin[b]+"_qtweight_nr"];
+            	graph->SetMarkerColor(kRed);
+            	graph->GetXaxis()->SetRangeUser(  0., 1000);
+            	graph->GetXaxis()->SetTitleSize(.055);
+            	graph->GetYaxis()->SetTitleSize(.055);
+            	graph->GetXaxis()->SetLabelSize(.05);
+            	graph->GetYaxis()->SetLabelSize(.05);
+            	graph->GetXaxis()->SetTitle("Z Boson pT [GeV]");
+            	graph->GetYaxis()->SetTitle("Weights");
+            	graph->Draw();
+            	leg->AddEntry(graph, catL[c].c_str(), "LP");
+            	canvas_name = "/Weights_"+cat[c]+var[v];
+
+	     			} 
+	     			else if(var[v]=="_qtrebinweight" ){
+            	if( cat[c] == "ll" || cat[c] == "gamma" || cat[c] == "all" ) continue;
+cout << " bug dans qtrebinweight ? " << endl;
+              gPad->SetLogy();
+            	TF1* function = NULL;
+            	function = WeightsFitFunction_Hugo[cat[c]+bin[b]+var[v]];
+            	function->SetMarkerColor(kRed);
+            	function->GetXaxis()->SetRangeUser(  0., 1000);
+            	function->GetXaxis()->SetTitleSize(.055);
+            	function->GetYaxis()->SetTitleSize(.055);
+            	function->GetXaxis()->SetLabelSize(.05);
+            	function->GetYaxis()->SetLabelSize(.05);
+            	function->GetXaxis()->SetTitle("Z Boson pT [GeV]");
+            	function->GetYaxis()->SetTitle("Weights");
+            	function->Draw();
+            	leg->AddEntry(function, catL[c].c_str(), "LP");
+            	canvas_name = "/Weights_"+cat[c]+var[v];
+
+	     			} 
+	     			
+	     			else {
+            	if( cat[c] == "all" || cat[c] == "ll" || var[v] == "_qtweight" || var[v] == "_qtrebinweight") continue;
+
+							hist = DataHistos[cat[c]+bin[b]+var[v]];
+            	hist->GetXaxis()->SetRangeUser(  1., 1000);
+            	hist->GetYaxis()->SetRangeUser( 0.5,  1E6);
+							hist->Draw("HIST E1 same`");
+							canvas_name = "/PhotonDistribution_"+cat[c]+var[v];
+	  					c1->SaveAs((outDir + canvas_name +bin[b]+".png").c_str());
+	  	 			}
+          	leg->AddEntry(hist, catL[c].c_str(), "LP");
+	     			leg->Draw("SAME");
+	  			} 
+	  			cout << "On sauvegarde les histos" << endl;
+        	c1->SaveAs((outDir + canvas_name +".png").c_str());
+        	c1->SaveAs((outDir + canvas_name +".root").c_str());
+
+
+      		}
+    		}
+  		}
+
+  		cout << " We are here : %d " << __LINE__ << endl;
+  		//SAVE THE material to the weight file
+  		TFile* OutputFile = new TFile(outFile.c_str(),"RECREATE");
+  		OutputFile->cd();
+  		for(unsigned int c=0;c<cat.size();c++){
+    		if( cat[c] == "ll" || cat[c] == "gamma" || cat[c] == "all" )continue;
+    		for(unsigned int b=0;b<bin.size();b++){
+     			for(unsigned int v=0;v<var.size();v++){
+        		if(!bfit){ if(DataHistos.find(cat[c]+bin[b]+var[v])==DataHistos.end()){printf("Histo missing for %s\n", (cat[c]+bin[b]+var[v]).c_str()); continue;} }
+
+        		TH1D* hist = DataHistos[cat[c]+bin[b]+var[v]];
+        		if(bfit){
+          		if(var[v]=="_qtweight_nr"){ 		
+			   				TGraphErrors* graph = WeightsFitFunctionNorm[cat[c]+bin[b]+"_qtweight_nr"];
+			   				graph->Write((cat[c]+bin[b]+"_qt_datafitfunctionwgts_norm").c_str()); 
+          		}
+          		//else if(var[v]=="_qtrebinweight_nr"){
+          		else if(var[v]=="_qtrebinweight"){
+            		TF1* function = WeightsFitFunction_Hugo[cat[c]+bin[b]+"_qtrebinweight"];
+            		function->Write((cat[c]+bin[b]+"_qtrebin_datafitfunctionwgts").c_str());
+          		}
+        		} else if(!bfit) { 
+          		if(var[v]=="_qtweight"){
+            		TGraphErrors* graph = new TGraphErrors(hist);
+            		graph->Write((cat[c]+bin[b]+"_qt_datafitwgts").c_str());
+          		}else if(var[v]=="_qtrebinweight"){
+            		TGraphErrors* graph = new TGraphErrors(hist);
+            		graph->Write((cat[c]+bin[b]+"_qt_datafitwgtsrebin").c_str()); 
+          		}
+        		}
+
+        		if(var[v]=="_qmass"){
+          		//replace VBF by geq1jets has there is no stat in VBF for Z candidates
+          		if(bin[b]=="vbf")continue;  
+          		if(bin[b]=="geq1jets"){
+            		hist->Write((cat[c]+"vbf"+"_qmass").c_str());  
+          		}
+          		hist->Write((cat[c]+bin[b]+"_qmass").c_str());
+        		}
+      		}
+    		}
+  		}
+  		OutputFile->Write(); OutputFile->Close();
+  		cout << " We are here : %d " << __LINE__ << endl;
+		}
 
