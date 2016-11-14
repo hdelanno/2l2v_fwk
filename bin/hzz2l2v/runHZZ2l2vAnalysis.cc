@@ -170,7 +170,18 @@ int main(int argc, char* argv[])
 
   std::vector<std::string> gammaPtWeightsFiles =  runProcess.getParameter<std::vector<std::string> >("weightsFile");      
   GammaWeightsHandler* gammaWgtHandler = (gammaPtWeightsFiles.size()>0 && gammaPtWeightsFiles[0]!="") ? new GammaWeightsHandler(runProcess,"",true) : NULL;
-  if(gammaWgtHandler)printf("gammaWgtHandler is activated\n");
+
+	// Apply rho corrections to photon sample, to match the rho distribution in the dilepton one
+  std::vector<std::string> rhoWeightsFilePath = runProcess.getParameter<std::vector<std::string> >("rhoWeightsFile"); 
+
+  bool doRhoCorrections=true;    
+  if ( rhoWeightsFilePath.size()==0) {doRhoCorrections=false; }     
+  else if ( rhoWeightsFilePath[0]=="") {doRhoCorrections=false; }
+
+  TFile* rhoWeightsFile=NULL;  
+
+	
+	if(gammaWgtHandler)printf("gammaWgtHandler is activated\n");
 
   //HIGGS weights and uncertainties
   
@@ -254,7 +265,7 @@ int main(int argc, char* argv[])
 	gSystem->ExpandPathName(nrLineShapesFileUrl);
 	nrLineShapesFile=TFile::Open(nrLineShapesFileUrl);
       } else if( isMC_GG ){
-	TString nrLineShapesFileUrl(string(std::getenv("CMSSW_BASE"))+"/src/UserCode/llvv_fwk/data/weights/Weights_EWS_GGH_21June2016_AllInterferences.root"); 
+	TString nrLineShapesFileUrl(string(std::getenv("CMSSW_BASE"))+"/src/UserCode/llvv_fwk/data/weights/NR_weightsRun2.root"); 
 	gSystem->ExpandPathName(nrLineShapesFileUrl);
 	nrLineShapesFile=TFile::Open(nrLineShapesFileUrl);
       } else if( isMC_VBF ){
@@ -401,6 +412,7 @@ int main(int argc, char* argv[])
   mon.addHistogram(new TH1F("metphi", ";MET #phi;Events", 80, -4, 4) );
   mon.addHistogram(new TH1F("metphiUnCor", ";MET #phi;Events", 80, -4, 4) );
   mon.addHistogram(new TH1F("dphi_boson_met", ";#Delta #phi(#gamma,MET);Events", 40, 0, 4) );
+  mon.addHistogram(new TH1F("dphi_j_boson", ";#Delta #phi(j,boson);Events", 40, 0, 4) );
   
   //lepton control
   mon.addHistogram( new TH1F( "nleptons",   ";Nleptons;Events",10,0,10) );
@@ -1355,10 +1367,28 @@ int main(int argc, char* argv[])
                    std::vector<Float_t> photonVars;
                    photonVars.push_back(boson.pt());           
                    float photonWeightMain=1.0;
-                   if(L>0 && gammaWgtHandler)photonWeightMain=gammaWgtHandler->getWeightFor(photonVars,string(L==1?"ee":"mumu")+evCat);
-                   //if(L>0 && gammaWgtHandler)printf("Photon pT = %6.2f --> prescale=%6.2f weight=%6.2E forL=%i  cat=%s\n", boson.pt(), triggerPrescale, photonWeightMain, L, (string(L==1?"ee":"mumu")+evCat).Data());
-                   weight *= triggerPrescale * photonWeightMain;
-		   if(is2016MC) weight *= phoEff.getPhotonEfficiency(selPhotons[0].pt(), selPhotons[0].superCluster()->eta(), "tight",patUtils::CutVersion::ICHEP16Cut ).first;
+		   
+	   float photonRhoWeight=1.0;  
+	                      if(L>0 && gammaWgtHandler) {
+	   	 		     photonWeightMain=gammaWgtHandler->getWeightFor(photonVars,string(L==1?"ee":"mumu")+evCat);
+	   	 		     
+	   	 	 		     if (doRhoCorrections) { 
+	   	 	 	 		       TString rhoWeightsFileUrl(rhoWeightsFilePath[0].c_str());
+	   	 	 	 		       gSystem->ExpandPathName(rhoWeightsFileUrl); 
+	   	 	 	 		       rhoWeightsFile=TFile::Open(rhoWeightsFileUrl); 
+	   	 	 	  
+	   	 	 	 	 		       if (rhoWeightsFile) {
+	   	 	 	 	 	 			 TH2D* h_rho_zpt_weight = (TH2D*)rhoWeightsFile->Get("h_rho_zpt_weight");
+	   	 	 	 	 	 			 photonRhoWeight=h_rho_zpt_weight->GetBinContent(h_rho_zpt_weight->FindBin(boson.pt(), rho)); 
+	   	 	 	 	 	 			 rhoWeightsFile->Close(); 
+	   	 	 	 	 	 		       }
+	   	 	 	 		     }
+	   	 		   }
+	                      weight *= triggerPrescale * photonWeightMain * photonRhoWeight;
+
+
+
+if(is2016MC) weight *= phoEff.getPhotonEfficiency(selPhotons[0].pt(), selPhotons[0].superCluster()->eta(), "tight",patUtils::CutVersion::ICHEP16Cut ).first;
                }else{
                   continue;
                }
@@ -1442,9 +1472,11 @@ int main(int argc, char* argv[])
                     mon.fillHisto("leadeta",     tags,fabs(selLeptons[0].eta()),weight); 
                     mon.fillHisto("trailereta",  tags,fabs(selLeptons[1].eta()),weight); 
                   }
+                    
            
                   mon.fillHisto("zmass", tags,boson.mass(),weight); 
-                  mon.fillHisto("zy",    tags,fabs(boson.Rapidity()),weight); 
+                 
+                 	                  mon.fillHisto("zy",    tags,fabs(boson.Rapidity()),weight); 
 
                   if(passMass){
                     mon.fillHisto("eventflow",tags, 2,weight);
@@ -1454,11 +1486,137 @@ int main(int argc, char* argv[])
 
 
                     //these two are used to reweight photon -> Z, the 3rd is a control
-                    mon.fillHisto("qt",       tags, boson.pt(),weight,true); 
+                    mon.fillHisto("qt",       tags, boson.pt(),weight,true);
+                    for(unsigned int i=0;i<tags.size();i++){
+                    if (imet.pt()<80){
+											std::string hugoTest30 ="_hugoTest_MET_0_80__nbreJets_above_30__";
+											hugoTest30 += std::to_string(njets);
+											std::string hugoTest15 ="_hugoTest_MET_0_80__nbreJets_above_15__";
+                    	hugoTest15 += std::to_string(selJets.size());
+                    	mon.fillHisto("qt",       tags[i]+hugoTest30, boson.pt(),weight,true); //nombre de jets de plus de 30 GeV 
+                    mon.fillHisto("qt",       tags[i]+hugoTest15, boson.pt(),weight,true); //nombre de jets de plus de 15 GeV 
+                    //for (unsigned int ijet =0; ijet < selJets.size() ; ijet++){
+                    if (selJets.size() >0 ){
+                    if ( selJets[0].pt() < 30) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_0smaller30", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 40) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_30smaller40", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 50) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_40smaller50", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 70) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_50smaller70", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 100) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_70smaller100", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 150) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_100smaller150", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 200) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_150smaller200", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 300) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_200smaller300", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 500) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_300smaller500", boson.pt(),weight,true); //en fonction du pt du jet
+                    else mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_500smallerInf", boson.pt(),weight,true); //en fonction du pt du jet
+
+										//Quelques bins additionels
+                    if ( selJets[0].pt() > 30 && selJets[0].pt() <50) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_30smaller50", boson.pt(),weight,true); //en fonction du pt du jet
+                    if ( selJets[0].pt() > 50 && selJets[0].pt() <90) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_50smaller90", boson.pt(),weight,true); //en fonction du pt du jet
+                    if ( selJets[0].pt() > 90 && selJets[0].pt() <200) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_90smaller200", boson.pt(),weight,true); //en fonction du pt du jet
+                    if ( selJets[0].pt() > 200) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_0_80__pt0_200smallerInf", boson.pt(),weight,true); //en fonction du pt du jet
+										}
+                    }
+										else if(imet.pt()>80){
+                   
+                   				std::string hugo2Test30 ="_hugoTest_MET_80_inf__nbreJets_above_30__";
+											hugo2Test30 += std::to_string(njets);
+											std::string hugo2Test15 ="_hugoTest_MET_80_inf__nbreJets_above_15__";
+                    	hugo2Test15 += std::to_string(selJets.size());
+                    	mon.fillHisto("qt",       tags[i]+hugo2Test30, boson.pt(),weight,true); //nombre de jets de plus de 30 GeV 
+                    mon.fillHisto("qt",       tags[i]+hugo2Test15, boson.pt(),weight,true); //nombre de jets de plus de 15 GeV 
+
+                    //for (unsigned int ijet =0; ijet < selJets.size() ; ijet++){
+                    if (selJets.size() >0 ){
+                    if ( selJets[0].pt() < 30) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_0smaller30", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 40) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_30smaller40", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 50) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_40smaller50", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 70) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_50smaller70", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 100) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_70smaller100", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 150) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_100smaller150", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 200) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_150smaller200", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 300) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_200smaller300", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 500) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_300smaller500", boson.pt(),weight,true); //en fonction du pt du jet
+                    else mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_500smallerInf", boson.pt(),weight,true); //en fonction du pt du jet
+                    //}
+
+										//Quelques bins additionels
+                    if ( selJets[0].pt() > 30 && selJets[0].pt() <50) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_30smaller50", boson.pt(),weight,true); //en fonction du pt du jet
+                    if ( selJets[0].pt() > 50 && selJets[0].pt() <90) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_50smaller90", boson.pt(),weight,true); //en fonction du pt du jet
+                    if ( selJets[0].pt() > 90 && selJets[0].pt() <200) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_90smaller200", boson.pt(),weight,true); //en fonction du pt du jet
+                    if ( selJets[0].pt() > 200) mon.fillHisto("qt",       tags[i]+"_hugoTest_MET_80_inf__pt0_200smallerInf", boson.pt(),weight,true); //en fonction du pt du jet
+
+										}
+										}
+                   	     std::string hugo3Test30 ="_hugoTest__nbreJets_above_30__";
+                      hugo3Test30 += std::to_string(njets);
+                      std::string hugo3Test15 ="_hugoTest__nbreJets_above_15__";
+                      hugo3Test15 += std::to_string(selJets.size());
+                      mon.fillHisto("qt",       tags[i]+hugo3Test30, boson.pt(),weight,true); //nombre de jets de plus de 30 GeV 
+                    mon.fillHisto("qt",       tags[i]+hugo3Test15, boson.pt(),weight,true); //nombre de jets de plus de 15 GeV 
+
+                    //for (unsigned int ijet =0; ijet < selJets.size() ; ijet++){
+                    if (selJets.size() >0 ){
+                    if ( selJets[0].pt() < 30) mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_0smaller30", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 40) mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_30smaller40", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 50) mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_40smaller50", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 70) mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_50smaller70", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 100) mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_70smaller100", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 150) mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_100smaller150", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 200) mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_150smaller200", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 300) mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_200smaller300", boson.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 500) mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_300smaller500", boson.pt(),weight,true); //en fonction du pt du jet
+                    else mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_500smallerInf", boson.pt(),weight,true); //en fonction du pt du jet
+                    //}
+
+										//Quelques bins additionels
+                    if ( selJets[0].pt() > 30 && selJets[0].pt() <50) mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_30smaller50", boson.pt(),weight,true); //en fonction du pt du jet
+                    if ( selJets[0].pt() > 50 && selJets[0].pt() <90) mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_50smaller90", boson.pt(),weight,true); //en fonction du pt du jet
+                    if ( selJets[0].pt() > 90 && selJets[0].pt() <200) mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_90smaller200", boson.pt(),weight,true); //en fonction du pt du jet
+                    if ( selJets[0].pt() > 200) mon.fillHisto("qt",       tags[i]+"_hugoTest_pt0_200smallerInf", boson.pt(),weight,true); //en fonction du pt du jet
+
+										}
+                    }
                     mon.fillHisto("qtraw",    tags, boson.pt(),weight/triggerPrescale,true); 
 
+                    if (selJets.size() >0 ){
+										
+										float dphijboson=fabs(deltaPhi(selJets[0].phi(), boson.phi()));
+										for(unsigned int i=0;i<tags.size();i++){
+										if(imet.pt()<80) mon.fillHisto("dphi_j_boson", tags[i]+"_hugoTest_MET_0_80", dphijboson, weight, true);
+										else mon.fillHisto("dphi_j_boson", tags[i]+"_hugoTest_MET_80_inf", dphijboson, weight, true);
+										mon.fillHisto("dphi_j_boson", tags[i]+"_hugoTest", dphijboson, weight, true);
+										if(imet.pt()<30) mon.fillHisto("dphi_j_boson", tags[i]+"_hugoTest_MET_0_30", dphijboson, weight, true);
+										else if(imet.pt()<50) mon.fillHisto("dphi_j_boson", tags[i]+"_hugoTest_MET_30_50", dphijboson, weight, true);
+										else if(imet.pt()<80) mon.fillHisto("dphi_j_boson", tags[i]+"_hugoTest_MET_50_80", dphijboson, weight, true);
+										else if(imet.pt()<120) mon.fillHisto("dphi_j_boson", tags[i]+"_hugoTest_MET_80_120", dphijboson, weight, true);
+										else if(imet.pt()<200) mon.fillHisto("dphi_j_boson", tags[i]+"_hugoTest_MET_120_200", dphijboson, weight, true);
+										else mon.fillHisto("dphi_j_boson", tags[i]+"_hugoTest_MET_200_inf", dphijboson, weight, true);
+										}}
+
+
                     if(passQt){
-                      mon.fillHisto("eventflow",tags,3,weight);
+                  		for(unsigned int i=0;i<tags.size();i++){
+                  if(imet.pt()<30) mon.fillHisto("zmass", tags[i]+"_hugoTest_MET_0_30",boson.mass(),weight); 
+                  else if(imet.pt()<50) mon.fillHisto("zmass", tags[i]+"_hugoTest_MET_30_50",boson.mass(),weight); 
+                  else if(imet.pt()<80) mon.fillHisto("zmass", tags[i]+"_hugoTest_MET_50_80",boson.mass(),weight); 
+                  else if(imet.pt()<100)mon.fillHisto("zmass", tags[i]+"_hugoTest_MET_80_100",boson.mass(),weight); 
+                  else if(imet.pt()<150)mon.fillHisto("zmass", tags[i]+"_hugoTest_MET_100_150",boson.mass(),weight); 
+                  else if(imet.pt()<200)mon.fillHisto("zmass", tags[i]+"_hugoTest_MET_150_200",boson.mass(),weight); 
+                  else if(imet.pt()<300)mon.fillHisto("zmass", tags[i]+"_hugoTest_MET_200_300",boson.mass(),weight); 
+                  else if(imet.pt()<500)mon.fillHisto("zmass", tags[i]+"_hugoTest_MET_300_500",boson.mass(),weight); 
+                  else mon.fillHisto("zmass", tags[i]+"_hugoTest_MET_500_inf",boson.mass(),weight); 
+                  
+                  //Quelques bin additionnels
+                  if(imet.pt()<80) mon.fillHisto("zmass", tags[i]+"_hugoTest_MET_0_80",boson.mass(),weight); 
+                  if(imet.pt()>80 && imet.pt()<120) mon.fillHisto("zmass", tags[i]+"_hugoTest_MET_80_120",boson.mass(),weight);
+                  if(imet.pt()>120 && imet.pt()<300) mon.fillHisto("zmass", tags[i]+"_hugoTest_MET_120_300",boson.mass(),weight);
+                  if(imet.pt()>300) mon.fillHisto("zmass", tags[i]+"_hugoTest_MET_300_inf",boson.mass(),weight);
+									}
+
+                  		
+                  		
+                  		
+                  		
+                  		mon.fillHisto("eventflow",tags,3,weight);
                       int nExtraLeptons((selLeptons.size()-2)+extraLeptons.size());
                       mon.fillHisto("nextraleptons",tags,nExtraLeptons,weight);
                       if(nExtraLeptons>0){
@@ -1517,7 +1675,53 @@ int main(int argc, char* argv[])
                             mon.fillHisto( "dphi_boson_met",tags,b_dphi,weight);
        
                             mon.fillHisto( "met",tags,imet.pt(),weight,true);
-                            mon.fillHisto( "metpuppi",tags,puppimet.pt(),weight,true);
+       											for(unsigned int i=0;i<tags.size();i++){
+															std::string hugo = "_hugoTest";
+                            	std::string hugoTest30 ="_hugoTest__nbreJets_above_30__";
+                     					hugoTest30 += std::to_string(njets);
+                      				std::string hugoTest15 ="_hugoTest__nbreJets_above_15__";
+                      				hugoTest15 += std::to_string(selJets.size());
+                           		mon.fillHisto( "met",tags[i]+hugoTest30,imet.pt(),weight,true);
+                           		mon.fillHisto( "met",tags[i]+hugoTest15,imet.pt(),weight,true);
+                    if (selJets.size() > 0){       		
+										if ( selJets[0].pt() < 30) mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_0smaller30", imet.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 40) mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_30smaller40", imet.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 50) mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_40smaller50", imet.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 70) mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_50smaller70", imet.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 100) mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_70smaller100", imet.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 150) mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_100smaller150", imet.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 200) mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_150smaller200", imet.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 300) mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_200smaller300", imet.pt(),weight,true); //en fonction du pt du jet
+                    else if ( selJets[0].pt() < 500) mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_300smaller500", imet.pt(),weight,true); //en fonction du pt du jet
+                    else mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_500smallerInf", imet.pt(),weight,true); //en fonction du pt du jet
+                    //}
+
+                    //Quelques bins additionels
+                    if ( selJets[0].pt() > 30 && selJets[0].pt() <50) mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_30smaller50", imet.pt(),weight,true); //en fonction du pt du jet
+                    if ( selJets[0].pt() > 50 && selJets[0].pt() <90) mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_50smaller90", imet.pt(),weight,true); //en fonction du pt du jet
+                    if ( selJets[0].pt() > 90 && selJets[0].pt() <200) mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_90smaller200", imet.pt(),weight,true); //en fonction du pt du jet
+                    if ( selJets[0].pt() > 200) mon.fillHisto("met",       tags[i]+"_hugoTest__pt0_200smallerInf", imet.pt(),weight,true); //en fonction du pt du jet
+
+										float dphijboson=fabs(deltaPhi(selJets[0].phi(), boson.phi()));
+                    if(dphijboson < 0.5) mon.fillHisto("met", tags[i]+"_hugoTest_dphijboson_0_0p5", imet.pt(), weight, true);
+                    else if(dphijboson < 1.) mon.fillHisto("met", tags[i]+"_hugoTest_dphijboson_0p5_1", imet.pt(), weight, true);
+                    else if(dphijboson < 1.5) mon.fillHisto("met", tags[i]+"_hugoTest_dphijboson_1_1p5", imet.pt(), weight, true);
+                    else if(dphijboson < 2.0) mon.fillHisto("met", tags[i]+"_hugoTest_dphijboson_1p5_2", imet.pt(), weight, true);
+                    else if(dphijboson < 2.5) mon.fillHisto("met", tags[i]+"_hugoTest_dphijboson_2_2p5", imet.pt(), weight, true);
+                    else if(dphijboson < 3.) mon.fillHisto("met", tags[i]+"_hugoTest_dphijboson_2p5_3", imet.pt(), weight, true);
+                    else if(dphijboson < 3.5) mon.fillHisto("met", tags[i]+"_hugoTest_dphijboson_3_3p5", imet.pt(), weight, true);
+										else mon.fillHisto("met", tags[i]+"_hugoTest_dphijboson_3p5_inf", imet.pt(), weight, true);
+
+
+                    if(dphijboson < 1) mon.fillHisto("met", tags[i]+"_hugoTest_dphijboson_0_1", imet.pt(), weight, true);
+                    if(dphijboson < 2) mon.fillHisto("met", tags[i]+"_hugoTest_dphijboson_0_2", imet.pt(), weight, true);
+                    if(dphijboson > 2) mon.fillHisto("met", tags[i]+"_hugoTest_dphijboson_2_inf", imet.pt(), weight, true);
+                    if(dphijboson > 3) mon.fillHisto("met", tags[i]+"_hugoTest_dphijboson_3_inf", imet.pt(), weight, true);
+
+														}
+                            }
+
+													mon.fillHisto( "metpuppi",tags,puppimet.pt(),weight,true);
                             mon.fillHisto( "balance",tags,imet.pt()/boson.pt(),weight);
 
                             TVector2 met2(imet.px(),imet.py());

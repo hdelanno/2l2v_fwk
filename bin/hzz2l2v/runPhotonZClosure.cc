@@ -53,13 +53,15 @@ int main(int argc,const char* argv[])
 
   TFile *gInF;
 
-  dilCh="ll";
+	//std::vector<string> dilCh={"ll", "ee", "mumu"};
+	std::vector<string> dilCh={"mumu"};
 
   //open the files with the input plots
   string gDataFile="plotter.root";
   //  string zDataFile="plotter.root";
 
   string outDir = "photonZclosure/";  
+cout<< __LINE__ <<endl;
   
   for(int i=1;i<argc;i++){
     string arg(argv[i]);
@@ -78,19 +80,26 @@ int main(int argc,const char* argv[])
   //  TFile *llInF=TFile::Open(gDataFile.c_str());
   gInF=TFile::Open(gDataFile.c_str());
 
-  std::vector<string> distr = {"met","mt","axialmet","mindphijmet","balance"};
-  std::vector<string> cat = {"eq0jets","geq1jets","vbf"};
+  //std::vector<string> distr = {"met","mt","axialmet","mindphijmet","balance", "hugoTest_pt0_30smaller50_qt", "hugoTest_pt0_30smaller40_qt", "hugoTest_dphi_j_boson", "hugoTest_MET_50_80_zmass", "hugoTest_MET_0_80_zmass", "hugoTest_MET_0_30_zmass", "hugoTest_MET_30_50_zmass", "hugoTest_MET_80_120_zmass", "hugoTest_MET_80_100_zmass", "hugoTest_dphijboson_3_inf_met", "hugoTest_dphijboson_3_3p5_met", "hugoTest_dphijboson_2_inf_met", "hugoTest__pt0_70smaller100_met", "hugoTest__pt0_50smaller90_met", "hugoTest__pt0_30smaller50_met"};
+  std::vector<string> distr = {"met","mt","axialmet","mindphijmet","balance", "hugoTest_pt0_30smaller50_qt", "hugoTest_pt0_30smaller40_qt", "hugoTest_dphi_j_boson", "hugoTest_dphijboson_3_inf_met", "hugoTest_dphijboson_3_3p5_met", "hugoTest_dphijboson_2_inf_met", "hugoTest_dphijboson_2p5_3_met", "hugoTest_dphijboson_2_2p5_met", "hugoTest_dphijboson_1p5_2_met", "hugoTest_dphijboson_0_2_met", "hugoTest_dphijboson_0_1_met", "hugoTest_dphijboson_0_0p5_met", "hugoTest_dphijboson_1_1p5_met", "hugoTest_dphijboson_0p5_1_met", "hugoTest__pt0_90smaller200_met", "hugoTest__pt0_100smaller150_met", "hugoTest__pt0_300smaller500_met", "hugoTest__pt0_200smallerInf_met", "hugoTest__pt0_70smaller100_met", "hugoTest__pt0_50smaller90_met", "hugoTest__pt0_50smaller70_met", "hugoTest__pt0_200smaller300_met", "hugoTest__pt0_150smaller200_met", "hugoTest__pt0_30smaller50_met", "hugoTest__pt0_30smaller40_met", "hugoTest__pt0_40smaller50_met", "hugoTest__pt0_500smallerInf_met", "hugoTest__nbreJets_above_30__1_met", "hugoTest__nbreJets_above_30__2_met", "hugoTest__nbreJets_above_30__3_met", "hugoTest__nbreJets_above_30__4_met", "hugoTest__nbreJets_above_30__5_met", "hugoTest__nbreJets_above_30__6_met", "hugoTest__nbreJets_above_30__7_met", "hugoTest__nbreJets_above_15__1_met", "hugoTest__nbreJets_above_15__2_met", "hugoTest__nbreJets_above_15__3_met", "hugoTest__nbreJets_above_15__4_met", "hugoTest__nbreJets_above_15__5_met", "hugoTest__nbreJets_above_15__6_met", "hugoTest__nbreJets_above_15__7_met"};
+  //std::vector<string> distr = {"met","mt","axialmet","mindphijmet","balance"};
+  //std::vector<string> cat = {"eq0jets","geq1jets","vbf"};
+  std::vector<string> cat = {"geq1jets"};
+cout<< __LINE__ <<endl;
 
+for( unsigned int lep=0; lep < dilCh.size(); lep++){
   for(unsigned int icat=0; icat<cat.size(); icat++)
     {
       for(unsigned int ich=0; ich<distr.size(); ich++) 
 	{
-	  std::cout << "Running for distr : " <<  distr[ich] << " , event flavor : " << dilCh << 
+	  std::cout << "Running for distr : " <<  distr[ich] << " , event flavor : " << dilCh[lep] << 
 	    " and category : " << cat[icat] << std::endl;
-	  closureTest(gInF,distr[ich],dilCh,cat[icat],purePhoton);
+cout<< __LINE__ <<endl;
+
+closureTest(gInF,distr[ich],dilCh[lep],cat[icat],purePhoton);
 	  
 	}
-    }
+   	} }
 
   system( (string("mkdir -p ") + outDir).c_str());
   system( (string(" mv ") + string("*closure*.* ") + outDir).c_str());
@@ -100,6 +109,7 @@ int main(int argc,const char* argv[])
   //  llInF->Close();
   gInF->Close();
   toSave.Clear();
+cout<< __LINE__ <<endl;
 
   return 0;
 }
@@ -180,7 +190,8 @@ std::vector<TH1F *> getRatioOnly(TFile *llF,TFile *gF,TString distr,TString ch, 
 //
 void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton)
 {
-  //  bool rebin(distr.Contains("jetdeta") || distr.Contains("spt") || distr.Contains("qgmva"));
+cout<< __LINE__ <<endl;
+	//  bool rebin(distr.Contains("jetdeta") || distr.Contains("spt") || distr.Contains("qgmva"));
   bool rebin=false;
   //
   //GET HISTOS FROM FILES
@@ -188,12 +199,15 @@ void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton
   string mcdy;
   if (mode=="MC") { mcdy="Z#rightarrow ee-#mu#mu_filt1113"; }
   else if (mode=="DATA") { mcdy = "data"; }
+cout<< __LINE__ <<endl;
   
   TH1D *hdy = NULL;
   if(ch=="ll")
     {
       hdy=(TH1D *) gF->Get( (mcdy+"/ee"+cat+"_"+distr).c_str() );
+cout<< __LINE__ <<endl;
       hdy=(TH1D *) hdy->Clone( ("mcdy_"+cat+"_"+distr).c_str() );
+cout<< __LINE__ <<endl;
       hdy->Add((TH1D *) gF->Get( (mcdy+"/mumu"+cat+"_"+distr).c_str()) );
     }
   else
@@ -208,11 +222,14 @@ void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton
   // bool useFakes=true;
   
   std::vector<string> mcg;
+cout<< __LINE__ <<endl;
 
   //  if (mode=="MC") { mcg.push_back("#gamma+jets_mc_reweighted"); } // incl. DY
   if (mode=="MC") { mcg.push_back("#gamma+jets_reweighted"); }  // DY in HTbins
   else if (mode=="DATA") { mcg.push_back("Instr. MET"); }
+  //else if (mode=="DATA") { mcg.push_back("#gamma data_reweighted"); } //Here I don't play with Genuine MET so gamma reweighted is fine (Hugo)
   
+cout<< __LINE__ <<endl;
   purePhoton=true;
  
   if(!purePhoton) { // Add EWK
@@ -248,27 +265,40 @@ void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton
 	}
       else
 	{
+cout<< __LINE__ <<endl;
 	  if(hg){
 	    hg->Add( (TH1D *) gF->Get( (mcg[ig]+"/"+ch+cat+"_"+distr).c_str()) );
 	    //	    hn->Add( (TH1D *)gF->Get( (mcg[ig]+"/gamma"+ch+cat+"_"+distr).c_str()) ); 
+	    hn->Add( (TH1D *)gF->Get( (mcg[ig]+"/"+ch+cat+"_"+distr).c_str()) ); //Add by Hugo 
 	  }
 	  else{
 	    std::cout << "test3: " << ("mcg_"+ch+cat+"_"+distr).c_str()  << std::endl; 
+cout<< __LINE__ <<endl;
 	    hg=(TH1D *) gF->Get( (mcg[ig]+"/"+ch+cat+"_"+distr).c_str() );
+cout<< __LINE__ <<endl;
 	    hg=(TH1D *) hg->Clone(("mcg_"+ch+cat+"_"+distr).c_str());
+cout<< __LINE__ <<endl;
+	    hn=(TH1D *) hg->Clone(("mcg_"+ch+cat+"_"+distr).c_str()); hn->Reset(); //Add by Hugo
 	  }
 	}
+cout<< __LINE__ <<endl;
       
       if(ig==0){
+cout<< __LINE__ <<endl;
 	TString pureName(hg->GetName());
 	pureName.ReplaceAll("mcg","mcpureg");
 	hpureg=(TH1D *)hg->Clone(pureName);
       }
     }
+cout<< __LINE__ <<endl;
   if(hg==0 || hpureg==0) return;
+cout<< __LINE__ <<endl;
   hg->SetDirectory(0);
+cout<< __LINE__ <<endl;
   hpureg->SetDirectory(0);
+cout<< __LINE__ <<endl;
   hn->SetDirectory(0);
+cout<< __LINE__ <<endl;
   if(rebin) {
     hg->Rebin();
     hpureg->Rebin();
@@ -276,6 +306,7 @@ void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton
   //if(distr=="qt") { hg->Rebin(4); hdy->Rebin(4); hpureg->Rebin(4); }
   //  else if(!distr.Contains("cjv")) { hg->Rebin(2); hdy->Rebin(2); hpureg->Rebin(2); }
 
+cout<< __LINE__ <<endl;
 //find limits
   float dyscale(hdy->Integral());
   // hdy->Scale(1./hdy->Integral());
@@ -313,6 +344,7 @@ void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton
   Double_t syst, esyst;
   Double_t diff, nmax, enmax;
   
+cout<< __LINE__ <<endl;
   for (size_t i=0; i<mbinlast; i++) {
   
     ndy=hdy->IntegralAndError(i,-1,errdy);
@@ -334,6 +366,7 @@ void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton
     //std::cout << "Systematic assigned = " << syst << std::endl;
   }
 
+cout<< __LINE__ <<endl;
   gStyle->SetOptStat(0);
   gStyle->SetOptTitle(0);
   
@@ -370,6 +403,7 @@ void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton
   hsyst->SetMarkerStyle(1);
   //hsyst->SetFillStyle(3001);
   // hsyst->SetFillColor(kGreen-10);
+cout<< __LINE__ <<endl;
   
   hsyst->Draw("EP");
   hsyst->SetMarkerColor(9);
@@ -395,6 +429,7 @@ void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton
   //
   
  
+cout<< __LINE__ <<endl;
 
   TCanvas *c = new TCanvas( ("c"+cat+"_"+distr,"c"+cat+"_"+distr).c_str() );
   c->SetWindowSize(500,600);
@@ -450,6 +485,7 @@ void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton
     hfakes->Draw("histsame");   
   }
 
+cout<< __LINE__ <<endl;
 
   hdy->SetTitle("DY #rightarrow ll");
   hdy->Draw("esame");
@@ -510,6 +546,7 @@ void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton
   leg->Draw("same");
 
 
+cout<< __LINE__ <<endl;
   pave = new TPaveText(0.94,0.4,1.0,0.83,"brNDC");
   pave->SetBorderSize(0);
   pave->SetFillStyle(0);
@@ -547,6 +584,7 @@ void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton
   leg->SetTextFont(42);
   leg->SetTextSize(0.11);
   leg->SetTextAlign(12);
+cout<< __LINE__ <<endl;
 
 
   //mc stats (of the photon sample here...)
@@ -585,6 +623,7 @@ void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton
   denRelUncH->SetLineColor(1);
   if(distr=="qt") { t2->SetLogx(); denRelUncH->GetXaxis()->SetRangeUser(50,1000); }
 
+cout<< __LINE__ <<endl;
    
   //now the actual ratio 
   TH1D *gr = (TH1D *) hdy->Clone("closuregr");
@@ -623,6 +662,7 @@ void closureTest(TFile *gF,string &distr,string &ch,string &cat, bool purePhoton
   c->Modified();
   c->Update();
 
+cout<< __LINE__ <<endl;
   c->SaveAs( (ch+cat+"_"+distr+"_closure.png").c_str());
   c->SaveAs( (ch+cat+"_"+distr+"_closure.C").c_str() );
   c->SaveAs( (ch+cat+"_"+distr+"_closure.pdf").c_str() );
