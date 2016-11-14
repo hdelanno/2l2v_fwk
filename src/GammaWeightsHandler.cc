@@ -14,7 +14,6 @@ GammaWeightsHandler::GammaWeightsHandler(const edm::ParameterSet &runProcess,TSt
     return;
   }
   
-  
   std::vector<TString> wgtNames; 
   wgtNames.push_back("qt");
   if(ewkSupWgt!="") wgtNames.push_back(ewkSupWgt);
