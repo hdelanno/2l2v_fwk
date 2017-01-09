@@ -64,7 +64,9 @@ queue='8nh'
 #IF CRAB3 is provided in argument, use crab submissiong instead of condor/lsf
 if [[ $arguments == *"crab3"* ]]; then queue='crab3' ;fi 
 
-if [[ $JSON =~ "2016" ]]; then
+if [[ $JSON =~ "full2016" ]]; then 
+    pileup=datapileup_full2016 
+elif [[ $JSON =~ "ichep2016" ]]; then
     pileup=datapileup_2016
 else
     pileup=datapileup_official  
@@ -150,7 +152,14 @@ if [[ $step > 1.999 && $step < 3 ]]; then
 	compareJSON.py --diff $RESULTSDIR/json_in.json $RESULTSDIR/json_gamma.json 
 
 	echo "COMPUTE INTEGRATED LUMINOSITY"
-	export PATH=$HOME/.local/bin:/afs/cern.ch/cms/lumi/brilconda-1.0.3/bin:$PATH
+	export LD_LIBRARY_PATH=/afs/cern.ch/cms/lumi/brilconda-1.1.7/root/lib
+        export PYTHONPATH=/afs/cern.ch/cms/lumi/brilconda-1.1.7/root/lib 
+        export PYTHONPATH=$ROOTSYS/lib:$PYTHONPATH 
+        export ROOTSYS=/afs/cern.ch/cms/lumi/brilconda-1.1.7/root 
+        export PATH=$HOME/.local/bin:/afs/cern.ch/cms/lumi/brilconda-1.1.7/bin:$PATH 
+#	export PATH=$HOME/.local/bin:/afs/cern.ch/cms/lumi/brilconda-1.0.3/bin:$PATH
+
+	pip uninstall brilws -y 
 	pip install --upgrade --install-option="--prefix=$HOME/.local" brilws &> /dev/null #will be installed only the first time
 
 	if [[ $JSON =~ "2016" ]]; then
