@@ -30,12 +30,13 @@
 #include "TMultiGraph.h"
 #include "TPaveText.h"
 #include "THStack.h"
+#include "TString.h"
 
 #include "UserCode/llvv_fwk/interface/tdrstyle.h"
 #include "UserCode/llvv_fwk/interface/MacroUtils.h"
 #include "UserCode/llvv_fwk/interface/RootUtils.h"
 #include "UserCode/llvv_fwk/interface/JSONWrapper.h"
-#include "HiggsAnalysis/CombinedLimit/interface/th1fmorph.h"
+#include "UserCode/llvv_fwk/interface/th1fmorph.h"
 //#include "UserCode/llvv_fwk/interface/th1fmorph.h"
 
 using namespace std;
@@ -57,6 +58,7 @@ bool doTex = true;
 bool doPowers = true;
 bool StoreInFile = true;
 bool doPlot = true;
+bool doForce = false;
 bool splitCanvas = false;
 bool onlyCutIndex = false;
 bool showRatioBox=true;
@@ -241,7 +243,7 @@ void MixProcess(JSONWrapper::Object& Root, TFile* File, std::list<NameAndType>& 
       File->cd();
  
       TDirectory* subdir = File->GetDirectory(dirName.c_str());
-      if(subdir && subdir!=File){
+      if(!doForce && (subdir && subdir!=File)){
          printf("Skip process %s as it seems to be already processed\n", dirName.c_str());
          continue;  //skip this process as it already exist in the file
       }
@@ -304,7 +306,7 @@ void NRBProcess(JSONWrapper::Object& Root, TFile* File, std::list<NameAndType>& 
       File->cd();
  
       TDirectory* subdir = File->GetDirectory(dirName.c_str());
-      if(subdir && subdir!=File){
+      if(!doForce && (subdir && subdir!=File)){
          printf("Skip process %s as it seems to be already processed\n", dirName.c_str());
          continue;  //skip this process as it already exist in the file
       }
@@ -438,7 +440,12 @@ void InterpollateProcess(JSONWrapper::Object& Root, TFile* File, std::list<NameA
  
       TDirectory* subdir = File->GetDirectory(dirName.c_str());
       if(!subdir || subdir==File){ subdir = File->mkdir(dirName.c_str());
-      }else{
+      }else if(doForce){
+      	 printf("Force reprocessing of process %s\n", dirName.c_str());
+      	 File->rmdir(dirName.c_str());
+      	 subdir = File->mkdir(dirName.c_str());
+      }
+      else{
          printf("Skip process %s as it seems to be already processed\n", dirName.c_str());
          continue;  //skip this process as it already exist in the file
       }
@@ -565,18 +572,36 @@ void SavingToFile(JSONWrapper::Object& Root, std::string RootDir, TFile* OutputF
 //      time_t now = time(0); 
       string dirName = getDirName(Process[i], matchingKeyword);
       OutputFile->cd();
+      if(doForce){
+				 printf("Classic -- Force reprocessing of process %s\n", dirName.c_str());
+         TString dirName_TSTRING = getDirName(Process[i], matchingKeyword);
+				 std::cout << "PRINT NAME : " << dirName_TSTRING << std::endl;
+         if(dirName_TSTRING == "#gamma+jets_reweighted") OutputFile->rmdir("\\#gamma\\+jets\\_reweighted");
+         else OutputFile->rmdir(dirName_TSTRING);
+         OutputFile->Write();
+      	 continue;
+      }
       TDirectory* subdir = OutputFile->GetDirectory(dirName.c_str());
       if(!subdir || subdir==OutputFile){ 
 	 subdir = OutputFile->mkdir(dirName.c_str());
-      }else{ 
+      }
+      /*else if(doForce){
+         printf("Force reprocessing of process %s\n", dirName.c_str());
+      	 TString dirName_TSTRING = getDirName(Process[i], matchingKeyword);
+    		 OutputFile->rmdir(dirName_TSTRING);
+         OutputFile->Write();
+         //OutputFile->Close();
+         //subdir = OutputFile->mkdir(dirName.c_str());
+     		continue;
+     	}*/
+      else{ 
          printf("Skip process %s as it seems to be already processed\n", dirName.c_str());
          continue;  //skip this process as it already exist in the file
       }
 
-      subdir->cd();
+			subdir->cd();
 
 //      time_t after1 = time(0);
-      
       float  Weight = 1.0;     
       std::vector<JSONWrapper::Object> Samples = (Process[i])["data"].daughters();
       for(unsigned int j=0;j<Samples.size();j++){
@@ -841,7 +866,17 @@ void Draw1DHistogram(JSONWrapper::Object& Root, TFile* File, NameAndType& HistoP
       if(abs(rebin)>0){hist = hist->Rebin(abs(rebin)); hist->Scale(1.0/abs(rebin), rebin<0?"width":""); }
 
       if (HistoProperties.name.find("_met")!=std::string::npos) {
-	hist->GetXaxis()->SetRangeUser(0.,metxmax); 
+				//On rebin l'histo de met
+				//Double_t metaxis[]={0,5,10,15,20,25,30,35,40,45,50,55,60,70,80,90,100,125,150,175,200,250,300,400,500,600,700,800,900,1000};
+				Double_t metaxis[]={0,20,40,60,80,100,125,150,175,200,250,300,400,500,600,700,800,900,1000};
+	  		Int_t nmetAxis=sizeof(metaxis)/sizeof(Double_t);
+	    	hist = hist->Rebin(nmetAxis-1,hist->GetName(),metaxis);
+	    	//hist->Scale(1.0, "width"); //You cannot use that, not all bin have been rebinned
+	    	for (int i = 1; i<= 5; i++){
+					hist->SetBinContent(i, hist->GetBinContent(i)/4.);
+	    	}
+				
+				hist->GetXaxis()->SetRangeUser(0.,metxmax); 
       }
       if (HistoProperties.name.find("_mt")!=std::string::npos) {
 	hist->GetXaxis()->SetRangeUser(100.,mtxmax); 
@@ -868,7 +903,10 @@ void Draw1DHistogram(JSONWrapper::Object& Root, TFile* File, NameAndType& HistoP
       }else{
 	 stack->Add(hist, "HIST"); //Add to Stack
          legEntries.push_back(new TLegendEntry(hist, Process[i].getStringFromKeyword(matchingKeyword, "tag", "").c_str(), "F"));
-         if(!mc){mc = (TH1D*)hist->Clone("mc");utils::root::checkSumw2(mc);}else{mc->Add(hist);}      
+         if(!mc){mc = (TH1D*)hist->Clone("mc");utils::root::checkSumw2(mc);}else{
+					 utils::root::checkSumw2(hist); //Hugo: just to be sure but it doesn't change anything... (Normally add does it automatically
+         	 mc->Add(hist);
+           utils::root::checkSumw2(mc);}      
 
          //
          // take care of systematic error
@@ -1093,7 +1131,9 @@ void Draw1DHistogram(JSONWrapper::Object& Root, TFile* File, NameAndType& HistoP
 	   Double_t err=denSystUncH->GetBinError(xbin)/denSystUncH->GetBinContent(xbin);
 	   denSystUncH->SetBinContent(xbin,1);
 	   denSystUncH->SetBinError(xbin,err);
-       }denSystUnc->Set(GPoint);
+       }
+       
+       denSystUnc->Set(GPoint);
        denSystUnc->SetLineColor(1);
        denSystUnc->SetFillStyle(3004);
        denSystUnc->SetFillColor(kGray+2);
@@ -1375,6 +1415,7 @@ int main(int argc, char* argv[]){
         printf("--removeRatioPlot --> if you want to remove ratio plots between Data ad Mc\n");
         printf("--removeUnderFlow --> Remove the Underflow bin in the final plots\n");
         printf("--removeOverFlow --> Remove the Overflow bin in the final plots\n");
+        printf("--force --> Force the reproduction of sub-directory. Even if they already exist.\n");
 
         printf("command line example: runPlotter --json ../data/beauty-samples.json --iLumi 2007 --inDir OUT/ --outDir OUT/plots/ --outFile plotter.root --noRoot --noPlot\n");
 	return 0;
@@ -1419,6 +1460,7 @@ int main(int argc, char* argv[]){
      if(arg.find("--noPowers" )!=string::npos){ doPowers= false;    }
      if(arg.find("--noRoot")!=string::npos){ StoreInFile = false;    }
      if(arg.find("--noPlot")!=string::npos){ doPlot = false;    }
+     if(arg.find("--force")!=string::npos){ doForce = true;    }
      if(arg.find("--removeRatioPlot")!=string::npos){ showRatioBox = false; printf("No ratio plot between Data and Mc \n"); }
      if(arg.find("--removeUnderFlow")!=string::npos){ fixUnderflow = false; printf("No UnderFlowBin \n"); }
      if(arg.find("--removeOverFlow")!=string::npos){ fixOverflow = false; printf("No OverFlowBin \n"); }
